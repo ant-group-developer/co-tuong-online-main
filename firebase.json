@@ -1,0 +1,51 @@
+{
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs24",
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"],
+      "ignore": ["node_modules", ".git", "src", "build.mjs", "tsconfig.json", "*.log"]
+    }
+  ],
+  "hosting": {
+    "public": "apps/web/dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "predeploy": ["npm run build -w apps/web"],
+    "rewrites": [{ "source": "**", "destination": "/index.html" }],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' https://apis.google.com https://*.firebaseio.com https://*.firebasedatabase.app https://www.gstatic.com https://www.google.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.cloudfunctions.net https://*.run.app https://content-firebaseappcheck.googleapis.com https://www.google.com; img-src 'self' data: https://*.googleusercontent.com; style-src 'self' 'unsafe-inline'; frame-src https://*.firebaseapp.com https://*.web.app https://www.google.com https://apis.google.com; worker-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors *"
+          }
+        ]
+      },
+      {
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      }
+    ]
+  },
+  "emulators": {
+    "singleProjectMode": true,
+    "auth": { "port": 9099 },
+    "functions": { "port": 5001 },
+    "database": { "port": 9000 },
+    "firestore": { "port": 8085 },
+    "tasks": { "port": 9499 },
+    "hosting": { "port": 5002 },
+    "ui": { "enabled": true, "port": 4000 }
+  }
+}

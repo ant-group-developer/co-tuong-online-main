@@ -1,0 +1,15 @@
+node_modules/
+dist/
+functions/lib/
+.tools/
+*.log
+.env
+.env.local
+.env.*.local
+functions/.env.local
+.firebase/
+test-results/
+playwright-report/
+# Không bao giờ commit service account key
+*serviceAccount*.json
+*-adminsdk-*.json

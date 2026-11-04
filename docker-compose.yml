@@ -1,0 +1,15 @@
+# Chạy web Cờ Tướng Online bằng Docker: 1 container, 1 port. Cấu hình lấy từ file .env cạnh file này.
+#   docker compose up -d --build   →   http://localhost:${WEB_PORT}
+# Backend (Auth, Database, Cloud Functions) là project Firebase đã deploy, không chạy trong Docker.
+name: xiangqi
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    image: xiangqi-web:local
+    env_file: .env
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    restart: unless-stopped

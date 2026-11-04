@@ -1,0 +1,62 @@
+rules_version = '2';
+
+// Mặc định từ chối. Client KHÔNG ghi được rating, thống kê, kết quả, ledger, lịch sử – chỉ Cloud Functions (Admin SDK).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function validProfile() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['displayName', 'photoURL', 'createdAt', 'updatedAt'])
+        && d.displayName is string
+        && d.displayName.size() >= 2
+        && d.displayName.size() <= 24
+        && !d.displayName.matches('.*[<>].*')
+        && (!('photoURL' in d) || d.photoURL == null
+            || (d.photoURL is string && d.photoURL.size() <= 500 && d.photoURL.matches('https://.*')))
+        && d.updatedAt == request.time;
+    }
+
+    // Hồ sơ công khai: chỉ tên hiển thị + ảnh. Không chứa email/PII.
+    match /publicProfiles/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid && validProfile()
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && request.auth.uid == uid && validProfile()
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
+    }
+
+    match /playerStats/{uid} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /leaderboard/{uid} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // Bản lưu trận: chỉ đọc theo id (replay). Trận riêng tư chỉ hai người chơi đọc được.
+    match /matches/{matchId} {
+      // resource == null: doc chưa tồn tại (kết quả đang xử lý) => trả "không có" thay vì lỗi quyền.
+      allow get: if signedIn()
+        && (resource == null || resource.data.visibility == 'public' || request.auth.uid in resource.data.playerUids);
+      allow list: if false;
+      allow write: if false;
+    }
+
+    // Lịch sử theo người chơi: chủ sở hữu đọc tất cả; người khác chỉ đọc trận công khai
+    // (truy vấn phải có where('visibility','==','public')).
+    match /players/{uid}/history/{matchId} {
+      allow read: if signedIn() && (request.auth.uid == uid || resource.data.visibility == 'public');
+      allow write: if false;
+    }
+
+    match /ratingLedger/{matchId} {
+      allow read, write: if false;
+    }
+  }
+}

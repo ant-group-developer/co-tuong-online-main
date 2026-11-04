@@ -1,0 +1,207 @@
+/*
+ * Bàn cờ: khung 414:460 (ô 46), quân chiếm 11.11% × 10% quanh giao điểm (giống phép đặt .pXY của bản tham chiếu).
+ * Kích thước chữ trên quân theo bề rộng bàn (container query units).
+ */
+.board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 414 / 460;
+  container-type: inline-size;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  border-radius: 10px;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.board-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.board-svg .grid line,
+.board-svg .grid polyline {
+  stroke: #5b3a1c;
+  stroke-width: 1.3;
+  stroke-linecap: square;
+}
+.board-svg .river text {
+  font-family: 'KaiTi', 'STKaiti', 'Noto Serif SC', 'Noto Serif CJK SC', 'SimSun', serif;
+  letter-spacing: 6px;
+}
+
+.pieces,
+.targets,
+.cells {
+  position: absolute;
+  inset: 0;
+}
+.pieces,
+.targets {
+  pointer-events: none;
+}
+
+.piece,
+.target,
+.last-mark,
+.cell {
+  position: absolute;
+  width: 11.111%;
+  height: 10%;
+}
+
+.piece {
+  display: grid;
+  place-items: center;
+  transition:
+    left 0.22s cubic-bezier(0.2, 0.7, 0.2, 1),
+    top 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
+  z-index: 2;
+}
+.piece .disc {
+  width: 88%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 35% 30%, #fff5dc 0%, #f4dcaa 45%, #dfb873 85%, #c99a55 100%);
+  box-shadow:
+    inset 0 -2px 0 rgba(120, 72, 25, 0.55),
+    inset 0 0 0 1.5px #a8743a,
+    0 2px 3px rgba(0, 0, 0, 0.45);
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+.piece .disc span {
+  width: 80%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid currentColor;
+  font-family: 'KaiTi', 'STKaiti', 'Noto Serif SC', 'Noto Serif CJK SC', 'SimSun', 'Microsoft YaHei', serif;
+  font-weight: 700;
+  font-size: 6.3cqw;
+  line-height: 1;
+}
+.piece.red .disc span {
+  color: #b8241a;
+}
+.piece.black .disc span {
+  color: #1b1b1b;
+}
+.piece.selected {
+  z-index: 3;
+}
+.piece.selected .disc {
+  transform: translateY(-3%) scale(1.08);
+  box-shadow:
+    inset 0 -2px 0 rgba(120, 72, 25, 0.55),
+    inset 0 0 0 1.5px #a8743a,
+    0 0 0 3px rgba(166, 226, 75, 0.95),
+    0 6px 10px rgba(0, 0, 0, 0.5);
+}
+.piece.in-check .disc {
+  animation: check-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes check-pulse {
+  from {
+    box-shadow:
+      inset 0 0 15px rgba(223, 14, 14, 0.5),
+      0 0 0 2px rgba(223, 14, 14, 0.6);
+  }
+  to {
+    box-shadow:
+      inset 0 0 18px rgba(223, 14, 14, 0.8),
+      0 0 12px 4px rgba(223, 14, 14, 0.75);
+  }
+}
+.piece.pending .disc {
+  opacity: 0.75;
+}
+.piece.just-moved .disc {
+  animation: land 0.28s ease-out;
+}
+@keyframes land {
+  0% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Đánh dấu nước vừa đi: 4 góc ngoặc (tương tự selected.png của tham chiếu nhưng vẽ bằng CSS) */
+.last-mark {
+  z-index: 1;
+  pointer-events: none;
+  --c: rgba(30, 110, 200, 0.9);
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 22% 2.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) top left / 2.5px 22% no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 22% 2.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 2.5px 22% no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 22% 2.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 2.5px 22% no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 22% 2.5px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 2.5px 22% no-repeat;
+  transform: scale(0.92);
+}
+.last-mark.from {
+  --c: rgba(30, 110, 200, 0.55);
+}
+
+.target {
+  display: grid;
+  place-items: center;
+  z-index: 4;
+}
+.target::after {
+  content: '';
+  width: 26%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(119, 179, 0, 0.92);
+  box-shadow:
+    0 0 0 2px rgba(255, 255, 255, 0.6),
+    0 0 8px rgba(119, 179, 0, 0.9);
+}
+.target.capture::after {
+  width: 90%;
+  background: transparent;
+  box-shadow:
+    inset 0 0 0 4px rgba(119, 179, 0, 0.9),
+    0 0 10px rgba(119, 179, 0, 0.8);
+}
+
+.cell {
+  z-index: 5;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.board.is-disabled .cell {
+  cursor: default;
+}
+.cell:focus-visible {
+  outline: 3px solid var(--gold, #f5c05a);
+  outline-offset: -4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piece,
+  .piece .disc {
+    transition: none;
+  }
+  .piece.in-check .disc,
+  .piece.just-moved .disc {
+    animation: none;
+  }
+}

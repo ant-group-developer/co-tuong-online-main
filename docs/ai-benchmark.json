@@ -1,0 +1,1753 @@
+{
+  "meta": {
+    "date": "2026-11-04T03:56:40.193Z",
+    "engine": "xq-engine (tự viết) – alpha-beta/PVS + TT + quiescence + null-move + LMR",
+    "node": "v24.18.0",
+    "cpu": "11th Gen Intel(R) Core(TM) i5-11400 @ 2.60GHz",
+    "cores": 12,
+    "memGB": 34,
+    "note": "Mỗi ván chạy trong một tiến trình riêng; nhiều ván chạy song song nên thời gian/nước có thể cao hơn khi máy rảnh.",
+    "profiles": {
+      "super_easy": {
+        "maxDepth": 1,
+        "timeMs": 120,
+        "maxNodes": 20000,
+        "useTT": false,
+        "ttSizeLog2": 10,
+        "useNullMove": false,
+        "useLMR": false,
+        "useKillers": false,
+        "quiescence": "none",
+        "qMaxDepth": 0,
+        "exactRootScores": true,
+        "mistakes": {
+          "randomMoveProb": 0.45,
+          "noiseCp": 300,
+          "blunderProb": 0,
+          "blunderMarginCp": 0
+        }
+      },
+      "easy": {
+        "maxDepth": 2,
+        "timeMs": 250,
+        "maxNodes": 100000,
+        "useTT": false,
+        "ttSizeLog2": 10,
+        "useNullMove": false,
+        "useLMR": false,
+        "useKillers": false,
+        "quiescence": "captures",
+        "qMaxDepth": 2,
+        "exactRootScores": true,
+        "mistakes": {
+          "randomMoveProb": 0.04,
+          "noiseCp": 60,
+          "blunderProb": 0.15,
+          "blunderMarginCp": 220
+        }
+      },
+      "medium": {
+        "maxDepth": 4,
+        "timeMs": 600,
+        "maxNodes": 600000,
+        "useTT": true,
+        "ttSizeLog2": 18,
+        "useNullMove": false,
+        "useLMR": false,
+        "useKillers": true,
+        "quiescence": "full",
+        "qMaxDepth": 8,
+        "exactRootScores": true,
+        "mistakes": {
+          "randomMoveProb": 0,
+          "noiseCp": 20,
+          "blunderProb": 0.05,
+          "blunderMarginCp": 80
+        }
+      },
+      "hard": {
+        "maxDepth": 8,
+        "timeMs": 1200,
+        "maxNodes": 3000000,
+        "useTT": true,
+        "ttSizeLog2": 20,
+        "useNullMove": false,
+        "useLMR": false,
+        "useKillers": true,
+        "quiescence": "full",
+        "qMaxDepth": 10,
+        "exactRootScores": false,
+        "mistakes": {
+          "randomMoveProb": 0,
+          "noiseCp": 0,
+          "blunderProb": 0,
+          "blunderMarginCp": 0
+        }
+      },
+      "super_hard": {
+        "maxDepth": 16,
+        "timeMs": 2500,
+        "maxNodes": 12000000,
+        "useTT": true,
+        "ttSizeLog2": 21,
+        "useNullMove": true,
+        "useLMR": true,
+        "useKillers": true,
+        "quiescence": "full",
+        "qMaxDepth": 12,
+        "exactRootScores": false,
+        "mistakes": {
+          "randomMoveProb": 0,
+          "noiseCp": 0,
+          "blunderProb": 0,
+          "blunderMarginCp": 0
+        }
+      },
+      "master": {
+        "maxDepth": 40,
+        "timeMs": 5000,
+        "maxNodes": 40000000,
+        "useTT": true,
+        "ttSizeLog2": 21,
+        "useNullMove": true,
+        "useLMR": true,
+        "useKillers": true,
+        "quiescence": "full",
+        "qMaxDepth": 16,
+        "exactRootScores": false,
+        "mistakes": {
+          "randomMoveProb": 0,
+          "noiseCp": 0,
+          "blunderProb": 0,
+          "blunderMarginCp": 0
+        }
+      }
+    }
+  },
+  "tactics": {
+    "super_easy": {
+      "m1": {
+        "solved": 1,
+        "total": 20,
+        "avgMs": 0
+      },
+      "d1": {
+        "solved": 6,
+        "total": 20,
+        "avgMs": 0
+      },
+      "m2": {
+        "solved": 1,
+        "total": 20,
+        "avgMs": 0
+      },
+      "m3": {
+        "solved": 1,
+        "total": 16,
+        "avgMs": 0
+      }
+    },
+    "easy": {
+      "m1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 1
+      },
+      "d1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 0
+      },
+      "m2": {
+        "solved": 14,
+        "total": 20,
+        "avgMs": 0
+      },
+      "m3": {
+        "solved": 5,
+        "total": 16,
+        "avgMs": 0
+      }
+    },
+    "medium": {
+      "m1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 9
+      },
+      "d1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 4
+      },
+      "m2": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 10
+      },
+      "m3": {
+        "solved": 11,
+        "total": 16,
+        "avgMs": 9
+      }
+    },
+    "hard": {
+      "m1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 0
+      },
+      "d1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 48
+      },
+      "m2": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 2
+      },
+      "m3": {
+        "solved": 16,
+        "total": 16,
+        "avgMs": 9
+      }
+    },
+    "super_hard": {
+      "m1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 1
+      },
+      "d1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 299
+      },
+      "m2": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 2
+      },
+      "m3": {
+        "solved": 16,
+        "total": 16,
+        "avgMs": 8
+      }
+    },
+    "master": {
+      "m1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 0
+      },
+      "d1": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 1381
+      },
+      "m2": {
+        "solved": 20,
+        "total": 20,
+        "avgMs": 2
+      },
+      "m3": {
+        "solved": 16,
+        "total": 16,
+        "avgMs": 9
+      }
+    }
+  },
+  "matches": [
+    {
+      "pair": "super_easy vs easy",
+      "games": 10,
+      "super_easy_wins": 0,
+      "easy_wins": 9,
+      "draws": 1,
+      "easy_score_pct": 95,
+      "avgThinkMs": {
+        "super_easy": 0,
+        "easy": 4
+      },
+      "avgDepth": {
+        "super_easy": 1,
+        "easy": 2
+      },
+      "reasons": [
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "bench_ply_cap",
+        "checkmate"
+      ]
+    },
+    {
+      "pair": "easy vs medium",
+      "games": 10,
+      "easy_wins": 0,
+      "medium_wins": 10,
+      "draws": 0,
+      "medium_score_pct": 100,
+      "avgThinkMs": {
+        "easy": 2,
+        "medium": 137
+      },
+      "avgDepth": {
+        "easy": 2,
+        "medium": 4
+      },
+      "reasons": [
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate"
+      ]
+    },
+    {
+      "pair": "medium vs hard",
+      "games": 10,
+      "medium_wins": 0,
+      "hard_wins": 10,
+      "draws": 0,
+      "hard_score_pct": 100,
+      "avgThinkMs": {
+        "medium": 65,
+        "hard": 829
+      },
+      "avgDepth": {
+        "medium": 4,
+        "hard": 6.4
+      },
+      "reasons": [
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "no_legal_moves",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate"
+      ]
+    },
+    {
+      "pair": "hard vs super_hard",
+      "games": 10,
+      "hard_wins": 2,
+      "super_hard_wins": 7,
+      "draws": 1,
+      "super_hard_score_pct": 75,
+      "avgThinkMs": {
+        "hard": 789,
+        "super_hard": 1492
+      },
+      "avgDepth": {
+        "hard": 6.4,
+        "super_hard": 10.9
+      },
+      "reasons": [
+        "checkmate",
+        "perpetual_check",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "no_legal_moves",
+        "no_legal_moves",
+        "no_progress",
+        "perpetual_check"
+      ]
+    },
+    {
+      "pair": "super_hard vs master",
+      "games": 10,
+      "super_hard_wins": 1,
+      "master_wins": 7,
+      "draws": 2,
+      "master_score_pct": 80,
+      "avgThinkMs": {
+        "super_hard": 1482,
+        "master": 3054
+      },
+      "avgDepth": {
+        "super_hard": 10.3,
+        "master": 11.8
+      },
+      "reasons": [
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "no_legal_moves",
+        "checkmate",
+        "repetition",
+        "repetition",
+        "checkmate",
+        "checkmate",
+        "checkmate"
+      ]
+    },
+    {
+      "pair": "medium vs master",
+      "games": 10,
+      "medium_wins": 0,
+      "master_wins": 10,
+      "draws": 0,
+      "master_score_pct": 100,
+      "avgThinkMs": {
+        "medium": 128,
+        "master": 2881
+      },
+      "avgDepth": {
+        "medium": 4,
+        "master": 9.7
+      },
+      "reasons": [
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate",
+        "checkmate"
+      ]
+    }
+  ],
+  "games": [
+    {
+      "red": "super_easy",
+      "black": "easy",
+      "opening": 1,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 26,
+      "think": {
+        "red": {
+          "totalMs": 3.334500000000048,
+          "moves": 12,
+          "depthSum": 12,
+          "nodes": 474
+        },
+        "black": {
+          "totalMs": 69.49500000000006,
+          "moves": 12,
+          "depthSum": 24,
+          "nodes": 42156
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "super_easy",
+      "opening": 0,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 61,
+      "think": {
+        "red": {
+          "totalMs": 115.04630000000009,
+          "moves": 31,
+          "depthSum": 62,
+          "nodes": 78779
+        },
+        "black": {
+          "totalMs": 2.6001999999999157,
+          "moves": 30,
+          "depthSum": 30,
+          "nodes": 1209
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "super_easy",
+      "opening": 1,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 57,
+      "think": {
+        "red": {
+          "totalMs": 100.68630000000002,
+          "moves": 28,
+          "depthSum": 56,
+          "nodes": 71202
+        },
+        "black": {
+          "totalMs": 2.368599999999873,
+          "moves": 27,
+          "depthSum": 27,
+          "nodes": 1148
+        }
+      }
+    },
+    {
+      "red": "super_easy",
+      "black": "easy",
+      "opening": 2,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 56,
+      "think": {
+        "red": {
+          "totalMs": 4.927099999999967,
+          "moves": 27,
+          "depthSum": 27,
+          "nodes": 912
+        },
+        "black": {
+          "totalMs": 89.41099999999997,
+          "moves": 27,
+          "depthSum": 54,
+          "nodes": 69595
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "super_easy",
+      "opening": 3,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 57,
+      "think": {
+        "red": {
+          "totalMs": 88.01830000000001,
+          "moves": 28,
+          "depthSum": 56,
+          "nodes": 66531
+        },
+        "black": {
+          "totalMs": 3.9895999999999674,
+          "moves": 27,
+          "depthSum": 27,
+          "nodes": 927
+        }
+      }
+    },
+    {
+      "red": "super_easy",
+      "black": "easy",
+      "opening": 3,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 42,
+      "think": {
+        "red": {
+          "totalMs": 3.602199999999982,
+          "moves": 20,
+          "depthSum": 20,
+          "nodes": 788
+        },
+        "black": {
+          "totalMs": 94.81660000000014,
+          "moves": 20,
+          "depthSum": 40,
+          "nodes": 65541
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "super_easy",
+      "opening": 2,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 31,
+      "think": {
+        "red": {
+          "totalMs": 94.0278000000001,
+          "moves": 15,
+          "depthSum": 30,
+          "nodes": 73149
+        },
+        "black": {
+          "totalMs": 1.3178000000000623,
+          "moves": 14,
+          "depthSum": 14,
+          "nodes": 740
+        }
+      }
+    },
+    {
+      "red": "super_easy",
+      "black": "easy",
+      "opening": 4,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 14,
+      "think": {
+        "red": {
+          "totalMs": 2.296400000000034,
+          "moves": 6,
+          "depthSum": 6,
+          "nodes": 402
+        },
+        "black": {
+          "totalMs": 44.07519999999997,
+          "moves": 6,
+          "depthSum": 12,
+          "nodes": 31332
+        }
+      }
+    },
+    {
+      "red": "super_easy",
+      "black": "easy",
+      "opening": 0,
+      "result": "draw",
+      "reason": "bench_ply_cap",
+      "plies": 300,
+      "think": {
+        "red": {
+          "totalMs": 12.321200000000147,
+          "moves": 150,
+          "depthSum": 150,
+          "nodes": 6618
+        },
+        "black": {
+          "totalMs": 514.8345999999998,
+          "moves": 150,
+          "depthSum": 300,
+          "nodes": 511627
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "super_easy",
+      "opening": 4,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 35,
+      "think": {
+        "red": {
+          "totalMs": 107.76900000000012,
+          "moves": 17,
+          "depthSum": 34,
+          "nodes": 50748
+        },
+        "black": {
+          "totalMs": 8.904000000000025,
+          "moves": 16,
+          "depthSum": 16,
+          "nodes": 756
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "medium",
+      "opening": 0,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 40,
+      "think": {
+        "red": {
+          "totalMs": 51.14510000000064,
+          "moves": 20,
+          "depthSum": 40,
+          "nodes": 61991
+        },
+        "black": {
+          "totalMs": 3274.1279000000004,
+          "moves": 20,
+          "depthSum": 80,
+          "nodes": 2893957
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "medium",
+      "opening": 2,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 68,
+      "think": {
+        "red": {
+          "totalMs": 44.97089999999821,
+          "moves": 33,
+          "depthSum": 66,
+          "nodes": 56642
+        },
+        "black": {
+          "totalMs": 2921.6762000000003,
+          "moves": 33,
+          "depthSum": 132,
+          "nodes": 2846510
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "medium",
+      "opening": 1,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 58,
+      "think": {
+        "red": {
+          "totalMs": 54.4602000000001,
+          "moves": 28,
+          "depthSum": 56,
+          "nodes": 78424
+        },
+        "black": {
+          "totalMs": 4561.449299999999,
+          "moves": 28,
+          "depthSum": 112,
+          "nodes": 4315409
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "easy",
+      "opening": 1,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 99,
+      "think": {
+        "red": {
+          "totalMs": 6078.457699999999,
+          "moves": 49,
+          "depthSum": 196,
+          "nodes": 6588512
+        },
+        "black": {
+          "totalMs": 99.6566999999992,
+          "moves": 48,
+          "depthSum": 96,
+          "nodes": 141647
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "easy",
+      "opening": 3,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 65,
+      "think": {
+        "red": {
+          "totalMs": 2853.156500000001,
+          "moves": 32,
+          "depthSum": 128,
+          "nodes": 3286847
+        },
+        "black": {
+          "totalMs": 45.70770000000067,
+          "moves": 31,
+          "depthSum": 62,
+          "nodes": 69272
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "easy",
+      "opening": 0,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 107,
+      "think": {
+        "red": {
+          "totalMs": 7649.590100000005,
+          "moves": 54,
+          "depthSum": 216,
+          "nodes": 7696145
+        },
+        "black": {
+          "totalMs": 91.32809999999915,
+          "moves": 53,
+          "depthSum": 106,
+          "nodes": 163640
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "medium",
+      "opening": 3,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 70,
+      "think": {
+        "red": {
+          "totalMs": 80.17550000000011,
+          "moves": 34,
+          "depthSum": 68,
+          "nodes": 122184
+        },
+        "black": {
+          "totalMs": 4406.153100000001,
+          "moves": 34,
+          "depthSum": 136,
+          "nodes": 5015717
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "easy",
+      "opening": 2,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 55,
+      "think": {
+        "red": {
+          "totalMs": 5247.391699999999,
+          "moves": 27,
+          "depthSum": 108,
+          "nodes": 5629503
+        },
+        "black": {
+          "totalMs": 60.3691000000012,
+          "moves": 26,
+          "depthSum": 52,
+          "nodes": 96383
+        }
+      }
+    },
+    {
+      "red": "easy",
+      "black": "medium",
+      "opening": 4,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 46,
+      "think": {
+        "red": {
+          "totalMs": 49.66049999999848,
+          "moves": 22,
+          "depthSum": 44,
+          "nodes": 78714
+        },
+        "black": {
+          "totalMs": 3926.4015000000004,
+          "moves": 22,
+          "depthSum": 88,
+          "nodes": 4107398
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "easy",
+      "opening": 4,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 89,
+      "think": {
+        "red": {
+          "totalMs": 6238.309999999998,
+          "moves": 44,
+          "depthSum": 176,
+          "nodes": 5593644
+        },
+        "black": {
+          "totalMs": 51.12519999999921,
+          "moves": 43,
+          "depthSum": 86,
+          "nodes": 101510
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "medium",
+      "opening": 0,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 31,
+      "think": {
+        "red": {
+          "totalMs": 13459.194599999999,
+          "moves": 16,
+          "depthSum": 86,
+          "nodes": 13622902
+        },
+        "black": {
+          "totalMs": 1375.3178999999968,
+          "moves": 15,
+          "depthSum": 60,
+          "nodes": 1348576
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "hard",
+      "opening": 1,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 60,
+      "think": {
+        "red": {
+          "totalMs": 1710.8910000000044,
+          "moves": 29,
+          "depthSum": 116,
+          "nodes": 1901902
+        },
+        "black": {
+          "totalMs": 26346.851800000004,
+          "moves": 29,
+          "depthSum": 172,
+          "nodes": 32284387
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "hard",
+      "opening": 0,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 88,
+      "think": {
+        "red": {
+          "totalMs": 2314.389600000011,
+          "moves": 44,
+          "depthSum": 176,
+          "nodes": 2806058
+        },
+        "black": {
+          "totalMs": 27253.5072,
+          "moves": 44,
+          "depthSum": 306,
+          "nodes": 28311488
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "medium",
+      "opening": 1,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 133,
+      "think": {
+        "red": {
+          "totalMs": 46017.38949999999,
+          "moves": 66,
+          "depthSum": 453,
+          "nodes": 51239566
+        },
+        "black": {
+          "totalMs": 3697.489699999995,
+          "moves": 65,
+          "depthSum": 260,
+          "nodes": 4569826
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "hard",
+      "opening": 2,
+      "result": "black",
+      "reason": "no_legal_moves",
+      "plies": 106,
+      "think": {
+        "red": {
+          "totalMs": 2351.1060999999927,
+          "moves": 52,
+          "depthSum": 208,
+          "nodes": 2915398
+        },
+        "black": {
+          "totalMs": 49323.6556,
+          "moves": 52,
+          "depthSum": 334,
+          "nodes": 61550077
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "hard",
+      "opening": 3,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 74,
+      "think": {
+        "red": {
+          "totalMs": 3041.2359999999917,
+          "moves": 36,
+          "depthSum": 144,
+          "nodes": 3874804
+        },
+        "black": {
+          "totalMs": 31244.871400000007,
+          "moves": 36,
+          "depthSum": 212,
+          "nodes": 34693457
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "medium",
+      "opening": 3,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 109,
+      "think": {
+        "red": {
+          "totalMs": 47296.39630000002,
+          "moves": 54,
+          "depthSum": 322,
+          "nodes": 49351924
+        },
+        "black": {
+          "totalMs": 4482.6004000000175,
+          "moves": 53,
+          "depthSum": 212,
+          "nodes": 5366908
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "hard",
+      "opening": 4,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 66,
+      "think": {
+        "red": {
+          "totalMs": 4446.755000000003,
+          "moves": 32,
+          "depthSum": 128,
+          "nodes": 4382384
+        },
+        "black": {
+          "totalMs": 27545.400100000006,
+          "moves": 32,
+          "depthSum": 184,
+          "nodes": 27000788
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "medium",
+      "opening": 2,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 155,
+      "think": {
+        "red": {
+          "totalMs": 69443.95249999998,
+          "moves": 77,
+          "depthSum": 490,
+          "nodes": 72046566
+        },
+        "black": {
+          "totalMs": 4733.780699999972,
+          "moves": 76,
+          "depthSum": 304,
+          "nodes": 5317649
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "medium",
+      "opening": 4,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 153,
+      "think": {
+        "red": {
+          "totalMs": 61796.22960000001,
+          "moves": 76,
+          "depthSum": 520,
+          "nodes": 67592070
+        },
+        "black": {
+          "totalMs": 2997.0969000000387,
+          "moves": 75,
+          "depthSum": 300,
+          "nodes": 3356907
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "hard",
+      "opening": 0,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 73,
+      "think": {
+        "red": {
+          "totalMs": 55993.3881,
+          "moves": 37,
+          "depthSum": 330,
+          "nodes": 50288592
+        },
+        "black": {
+          "totalMs": 29035.031600000017,
+          "moves": 36,
+          "depthSum": 192,
+          "nodes": 24089620
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "hard",
+      "opening": 1,
+      "result": "black",
+      "reason": "perpetual_check",
+      "plies": 77,
+      "think": {
+        "red": {
+          "totalMs": 60101.54419999999,
+          "moves": 38,
+          "depthSum": 413,
+          "nodes": 59256341
+        },
+        "black": {
+          "totalMs": 31965.705100000025,
+          "moves": 37,
+          "depthSum": 209,
+          "nodes": 32376453
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "super_hard",
+      "opening": 1,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 114,
+      "think": {
+        "red": {
+          "totalMs": 40200.970899999986,
+          "moves": 56,
+          "depthSum": 368,
+          "nodes": 39067523
+        },
+        "black": {
+          "totalMs": 80350.8558,
+          "moves": 56,
+          "depthSum": 612,
+          "nodes": 84227224
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "super_hard",
+      "opening": 0,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 122,
+      "think": {
+        "red": {
+          "totalMs": 51751.23539999995,
+          "moves": 61,
+          "depthSum": 352,
+          "nodes": 47641052
+        },
+        "black": {
+          "totalMs": 91547.30299999999,
+          "moves": 61,
+          "depthSum": 593,
+          "nodes": 87285696
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "super_hard",
+      "opening": 2,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 96,
+      "think": {
+        "red": {
+          "totalMs": 39660.368000000046,
+          "moves": 47,
+          "depthSum": 279,
+          "nodes": 39240945
+        },
+        "black": {
+          "totalMs": 64824.3034,
+          "moves": 47,
+          "depthSum": 461,
+          "nodes": 68789263
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "hard",
+      "opening": 3,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 53,
+      "think": {
+        "red": {
+          "totalMs": 35657.06590000001,
+          "moves": 26,
+          "depthSum": 235,
+          "nodes": 33807147
+        },
+        "black": {
+          "totalMs": 19567.068199999998,
+          "moves": 25,
+          "depthSum": 154,
+          "nodes": 17907982
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "hard",
+      "opening": 2,
+      "result": "red",
+      "reason": "no_legal_moves",
+      "plies": 89,
+      "think": {
+        "red": {
+          "totalMs": 64685.78059999999,
+          "moves": 44,
+          "depthSum": 454,
+          "nodes": 74719947
+        },
+        "black": {
+          "totalMs": 39990.003499999984,
+          "moves": 43,
+          "depthSum": 272,
+          "nodes": 45481896
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "super_hard",
+      "opening": 3,
+      "result": "black",
+      "reason": "no_legal_moves",
+      "plies": 148,
+      "think": {
+        "red": {
+          "totalMs": 55484.135600000096,
+          "moves": 73,
+          "depthSum": 473,
+          "nodes": 53011780
+        },
+        "black": {
+          "totalMs": 114672.50870000005,
+          "moves": 73,
+          "depthSum": 774,
+          "nodes": 114833454
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "master",
+      "opening": 0,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 79,
+      "think": {
+        "red": {
+          "totalMs": 59605.98029999992,
+          "moves": 40,
+          "depthSum": 378,
+          "nodes": 60419483
+        },
+        "black": {
+          "totalMs": 106583.44119999999,
+          "moves": 39,
+          "depthSum": 374,
+          "nodes": 100175056
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "super_hard",
+      "opening": 0,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 85,
+      "think": {
+        "red": {
+          "totalMs": 127733.19780000007,
+          "moves": 43,
+          "depthSum": 488,
+          "nodes": 133887045
+        },
+        "black": {
+          "totalMs": 61684.869200000096,
+          "moves": 42,
+          "depthSum": 421,
+          "nodes": 61453906
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "hard",
+      "opening": 4,
+      "result": "draw",
+      "reason": "no_progress",
+      "plies": 223,
+      "think": {
+        "red": {
+          "totalMs": 163578.83719999986,
+          "moves": 111,
+          "depthSum": 1422,
+          "nodes": 184649606
+        },
+        "black": {
+          "totalMs": 72889.7186,
+          "moves": 110,
+          "depthSum": 782,
+          "nodes": 83219264
+        }
+      }
+    },
+    {
+      "red": "hard",
+      "black": "super_hard",
+      "opening": 4,
+      "result": "red",
+      "reason": "perpetual_check",
+      "plies": 282,
+      "think": {
+        "red": {
+          "totalMs": 114720.68329999986,
+          "moves": 140,
+          "depthSum": 944,
+          "nodes": 121142126
+        },
+        "black": {
+          "totalMs": 212921.53420000005,
+          "moves": 140,
+          "depthSum": 1618,
+          "nodes": 212013842
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "master",
+      "opening": 1,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 102,
+      "think": {
+        "red": {
+          "totalMs": 74750.70429999997,
+          "moves": 50,
+          "depthSum": 418,
+          "nodes": 71256405
+        },
+        "black": {
+          "totalMs": 160297.60489999998,
+          "moves": 50,
+          "depthSum": 476,
+          "nodes": 154782088
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "super_hard",
+      "opening": 1,
+      "result": "red",
+      "reason": "no_legal_moves",
+      "plies": 85,
+      "think": {
+        "red": {
+          "totalMs": 129313.50199999996,
+          "moves": 42,
+          "depthSum": 441,
+          "nodes": 127484677
+        },
+        "black": {
+          "totalMs": 65654.14240000001,
+          "moves": 41,
+          "depthSum": 398,
+          "nodes": 63723059
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "super_hard",
+      "opening": 2,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 107,
+      "think": {
+        "red": {
+          "totalMs": 168806.88379999992,
+          "moves": 53,
+          "depthSum": 604,
+          "nodes": 170827456
+        },
+        "black": {
+          "totalMs": 79125.30369999996,
+          "moves": 52,
+          "depthSum": 526,
+          "nodes": 76264363
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "super_hard",
+      "opening": 4,
+      "result": "draw",
+      "reason": "repetition",
+      "plies": 30,
+      "think": {
+        "red": {
+          "totalMs": 43444.0932,
+          "moves": 14,
+          "depthSum": 141,
+          "nodes": 33433100
+        },
+        "black": {
+          "totalMs": 25775.43990000001,
+          "moves": 14,
+          "depthSum": 127,
+          "nodes": 19047038
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "master",
+      "opening": 2,
+      "result": "draw",
+      "reason": "repetition",
+      "plies": 168,
+      "think": {
+        "red": {
+          "totalMs": 108750.8393000001,
+          "moves": 83,
+          "depthSum": 1031,
+          "nodes": 98392672
+        },
+        "black": {
+          "totalMs": 248922.4716,
+          "moves": 83,
+          "depthSum": 1316,
+          "nodes": 233303447
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "master",
+      "opening": 3,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 134,
+      "think": {
+        "red": {
+          "totalMs": 95552.98419999995,
+          "moves": 66,
+          "depthSum": 674,
+          "nodes": 84795882
+        },
+        "black": {
+          "totalMs": 201605.11159999992,
+          "moves": 66,
+          "depthSum": 768,
+          "nodes": 185679755
+        }
+      }
+    },
+    {
+      "red": "super_hard",
+      "black": "master",
+      "opening": 4,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 104,
+      "think": {
+        "red": {
+          "totalMs": 74931.17129999997,
+          "moves": 51,
+          "depthSum": 508,
+          "nodes": 69136238
+        },
+        "black": {
+          "totalMs": 159559.8119999999,
+          "moves": 51,
+          "depthSum": 601,
+          "nodes": 145010093
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "medium",
+      "opening": 0,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 43,
+      "think": {
+        "red": {
+          "totalMs": 58330.39500000002,
+          "moves": 22,
+          "depthSum": 196,
+          "nodes": 41753317
+        },
+        "black": {
+          "totalMs": 2820.6451000000015,
+          "moves": 21,
+          "depthSum": 84,
+          "nodes": 2396025
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "master",
+      "opening": 0,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 66,
+      "think": {
+        "red": {
+          "totalMs": 3958.420499999987,
+          "moves": 33,
+          "depthSum": 132,
+          "nodes": 4248338
+        },
+        "black": {
+          "totalMs": 103340.8347,
+          "moves": 33,
+          "depthSum": 315,
+          "nodes": 92312721
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "medium",
+      "opening": 2,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 29,
+      "think": {
+        "red": {
+          "totalMs": 33108.203199999996,
+          "moves": 14,
+          "depthSum": 130,
+          "nodes": 36575987
+        },
+        "black": {
+          "totalMs": 1030.4878000000022,
+          "moves": 13,
+          "depthSum": 52,
+          "nodes": 1344614
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "master",
+      "opening": 1,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 66,
+      "think": {
+        "red": {
+          "totalMs": 6175.434500000021,
+          "moves": 32,
+          "depthSum": 128,
+          "nodes": 5275049
+        },
+        "black": {
+          "totalMs": 93002.73850000002,
+          "moves": 32,
+          "depthSum": 295,
+          "nodes": 74389873
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "master",
+      "opening": 2,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 44,
+      "think": {
+        "red": {
+          "totalMs": 2129.681199999986,
+          "moves": 21,
+          "depthSum": 84,
+          "nodes": 2264228
+        },
+        "black": {
+          "totalMs": 57817.22730000001,
+          "moves": 21,
+          "depthSum": 196,
+          "nodes": 57238292
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "medium",
+      "opening": 1,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 59,
+      "think": {
+        "red": {
+          "totalMs": 81146.92300000005,
+          "moves": 29,
+          "depthSum": 292,
+          "nodes": 69716323
+        },
+        "black": {
+          "totalMs": 2760.2183000000127,
+          "moves": 28,
+          "depthSum": 112,
+          "nodes": 2491005
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "medium",
+      "opening": 4,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 63,
+      "think": {
+        "red": {
+          "totalMs": 82633.77979999999,
+          "moves": 31,
+          "depthSum": 349,
+          "nodes": 69573978
+        },
+        "black": {
+          "totalMs": 1417.9703999999992,
+          "moves": 30,
+          "depthSum": 120,
+          "nodes": 1210354
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "super_hard",
+      "opening": 3,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 193,
+      "think": {
+        "red": {
+          "totalMs": 293980.6955000001,
+          "moves": 96,
+          "depthSum": 1142,
+          "nodes": 263987596
+        },
+        "black": {
+          "totalMs": 145454.63340000022,
+          "moves": 95,
+          "depthSum": 1017,
+          "nodes": 128633650
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "master",
+      "opening": 3,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 68,
+      "think": {
+        "red": {
+          "totalMs": 7711.562400000022,
+          "moves": 33,
+          "depthSum": 128,
+          "nodes": 4758286
+        },
+        "black": {
+          "totalMs": 98150.453,
+          "moves": 33,
+          "depthSum": 296,
+          "nodes": 66870599
+        }
+      }
+    },
+    {
+      "red": "medium",
+      "black": "master",
+      "opening": 4,
+      "result": "black",
+      "reason": "checkmate",
+      "plies": 56,
+      "think": {
+        "red": {
+          "totalMs": 2622.588900000036,
+          "moves": 27,
+          "depthSum": 108,
+          "nodes": 2687176
+        },
+        "black": {
+          "totalMs": 86551.41019999997,
+          "moves": 27,
+          "depthSum": 283,
+          "nodes": 76113870
+        }
+      }
+    },
+    {
+      "red": "master",
+      "black": "medium",
+      "opening": 3,
+      "result": "red",
+      "reason": "checkmate",
+      "plies": 69,
+      "think": {
+        "red": {
+          "totalMs": 101033.6397,
+          "moves": 34,
+          "depthSum": 335,
+          "nodes": 81900262
+        },
+        "black": {
+          "totalMs": 4035.409800000006,
+          "moves": 33,
+          "depthSum": 132,
+          "nodes": 3648599
+        }
+      }
+    }
+  ]
+}

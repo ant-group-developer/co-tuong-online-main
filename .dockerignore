@@ -1,0 +1,22 @@
+# Không đưa vào build context
+**/node_modules
+**/dist
+functions/lib
+.tools
+.firebase
+.git
+test-results
+playwright-report
+docs
+e2e
+tests
+*.log
+firebase.docker.json
+
+# Env & bí mật: image KHÔNG chứa cấu hình – lấy từ .env lúc chạy
+.env
+**/.env
+**/.env.*
+!**/.env.example
+*serviceAccount*.json
+*-adminsdk-*.json

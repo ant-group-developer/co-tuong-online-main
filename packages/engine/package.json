@@ -1,0 +1,20 @@
+{
+  "name": "@xq/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Engine luật cờ tướng + AI (TypeScript thuần, không phụ thuộc UI/Firebase).",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ai": "./src/ai/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "bench": "tsx scripts/benchmark.ts",
+    "perft": "tsx scripts/perft.ts"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
+  }
+}

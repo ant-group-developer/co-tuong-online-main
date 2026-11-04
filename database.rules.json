@@ -1,0 +1,77 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      ".indexOn": ["meta/updatedAt"],
+      "$roomId": {
+        ".read": "auth != null && (data.child('meta/visibility').val() === 'public' || data.child('members').child(auth.uid).exists())",
+        ".write": false
+      }
+    },
+
+    "publicRooms": {
+      ".read": "auth != null",
+      ".indexOn": ["updatedAt", "status"],
+      ".write": false
+    },
+
+    "roomStats": {
+      "$roomId": {
+        ".read": "auth != null && (root.child('rooms').child($roomId).child('meta/visibility').val() === 'public' || root.child('rooms').child($roomId).child('members').child(auth.uid).exists())",
+        ".write": false
+      }
+    },
+
+    "roomViewers": {
+      "$roomId": {
+        "$uid": {
+          "$connId": {
+            ".write": "auth != null && auth.uid === $uid && $connId.length <= 40 && (!newData.exists() || root.child('rooms').child($roomId).child('meta/visibility').val() === 'public' || root.child('rooms').child($roomId).child('members').child(auth.uid).exists())",
+            ".validate": "newData.hasChildren(['at']) && newData.child('at').isNumber() && newData.child('at').val() <= now",
+            "at": { ".validate": true },
+            "$other": { ".validate": false }
+          }
+        }
+      }
+    },
+
+    "roomLastSeen": {
+      "$roomId": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && (root.child('rooms').child($roomId).child('meta/visibility').val() === 'public' || root.child('rooms').child($roomId).child('members').child(auth.uid).exists())",
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        }
+      }
+    },
+
+    "presence": {
+      "$uid": {
+        ".read": "auth != null",
+        "$connId": {
+          ".write": "auth != null && auth.uid === $uid && $connId.length <= 40",
+          ".validate": "newData.hasChildren(['at']) && newData.child('at').isNumber() && newData.child('at').val() <= now",
+          "at": { ".validate": true },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
+    "mm": {
+      "assign": {
+        "$uid": { ".read": "auth != null && auth.uid === $uid" }
+      }
+    },
+
+    "roomInvites": {
+      "$roomId": {
+        ".read": "auth != null && root.child('rooms').child($roomId).child('meta/ownerUid').val() === auth.uid"
+      }
+    },
+
+    "invites": { ".indexOn": ["expiresAt"] },
+    "deadlines": { ".indexOn": ["at"] },
+    "pendingResults": { ".indexOn": ["at"] }
+  }
+}
