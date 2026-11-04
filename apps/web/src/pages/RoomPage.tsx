@@ -2,45 +2,38 @@
  * Phòng online: phòng chờ (mời bạn, sẵn sàng), bàn đấu cho người chơi, chế độ xem cho khán giả.
  * Nước đi gửi lên server dạng intent (commandId + expectedVersion); chỉ coi là chấp nhận khi RTDB có version mới.
  */
-import { END_REASON_VI, iccsToSquare, replayMoves, squareToIccs, type Game, type Side } from '@xq/engine';
+import { iccsToSquare, replayMoves, squareToIccs, type Game, type Side } from '@xq/engine';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Board } from '../components/Board';
 import { ErrorState, Modal, NotConfigured, SoundControl, Spinner, Toast, useNow } from '../components/common';
 import { MoveList, PlayerBar, ResultBanner } from '../components/GamePanels';
-import { api, errorVi, newCommandId, tcLabel, TC_OPTIONS } from '../lib/api';
+import { fmtDateTime, moveText } from '../i18n';
+import { api, commandText, errorText, newCommandId, tcLabel, TC_OPTIONS } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useConnection, useRoomPresence, useRtdb } from '../lib/rtdb';
 import { playSound } from '../lib/sound';
 import type { MatchPlayers, MatchState, RoomMeta, RoomStats, Seats } from '../lib/types';
 
-const CODE_VI: Record<string, string> = {
-  stale_version: 'Bàn cờ vừa thay đổi – đã đồng bộ lại',
-  not_your_turn: 'Chưa đến lượt bạn',
-  illegal_move: 'Nước đi không hợp lệ',
-  game_over: 'Trận đã kết thúc',
-  timeout: 'Đã hết giờ',
-  no_offer: 'Lời đề nghị không còn hiệu lực',
-  not_allowed: 'Không thể thực hiện lúc này',
-  not_expired: 'Chưa thể xử lý (đối thủ vẫn còn thời gian/kết nối)',
-};
-
 export function RoomPage() {
+  const { t } = useTranslation();
   const { roomId = '' } = useParams();
   const auth = useAuth();
   const [signInError, setSignInError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (auth.configured && auth.ready && !auth.user) auth.ensureSignedIn().catch((e) => setSignInError(errorVi(e)));
+    if (auth.configured && auth.ready && !auth.user) auth.ensureSignedIn().catch((e) => setSignInError(errorText(e)));
   }, [auth]);
 
   if (!auth.configured) return <NotConfigured />;
-  if (signInError) return <ErrorState title="Không đăng nhập được" message={signInError} />;
-  if (!auth.ready || !auth.user) return <Spinner label="Đang kết nối…" />;
+  if (signInError) return <ErrorState title={t('common.signInFailed')} message={signInError} />;
+  if (!auth.ready || !auth.user) return <Spinner label={t('common.connecting')} />;
   return <RoomInner roomId={roomId} uid={auth.user.uid} />;
 }
 
 function RoomInner({ roomId, uid }: { roomId: string; uid: string }) {
+  const { t } = useTranslation();
   const meta = useRtdb<RoomMeta>(`rooms/${roomId}/meta`);
   const seats = useRtdb<Seats>(`rooms/${roomId}/seats`);
   const myMember = useRtdb<{ role: string }>(`rooms/${roomId}/members/${uid}`);
@@ -49,15 +42,15 @@ function RoomInner({ roomId, uid }: { roomId: string; uid: string }) {
   const canView = !!meta.data && !meta.error;
   useRoomPresence(roomId, uid, canView);
 
-  if (meta.loading) return <Spinner label="Đang tải phòng…" />;
+  if (meta.loading) return <Spinner label={t('room.loading')} />;
   if (meta.error === 'permission_denied')
     return (
       <ErrorState
-        title="Phòng riêng tư"
-        message="Bạn cần link/mã mời hợp lệ do chủ phòng gửi để xem hoặc tham gia phòng này."
+        title={t('room.privateTitle')}
+        message={t('room.privateMsg')}
         action={
           <Link className="btn" to="/online">
-            Về sảnh
+            {t('common.backToLobby')}
           </Link>
         }
       />
@@ -66,11 +59,11 @@ function RoomInner({ roomId, uid }: { roomId: string; uid: string }) {
   if (!meta.data)
     return (
       <ErrorState
-        title="Không tìm thấy phòng"
-        message="Phòng không tồn tại hoặc đã bị xóa."
+        title={t('room.notFound')}
+        message={t('room.notFoundMsg')}
         action={
           <Link className="btn" to="/online">
-            Về sảnh
+            {t('common.backToLobby')}
           </Link>
         }
       />
@@ -79,15 +72,15 @@ function RoomInner({ roomId, uid }: { roomId: string; uid: string }) {
   const m = meta.data;
   return (
     <>
-      {!connected && <div className="banner warn" role="status">Mất kết nối – đang kết nối lại… Đồng hồ trên máy chủ vẫn chạy.</div>}
+      {!connected && <div className="banner warn" role="status">{t('room.disconnected')}</div>}
       {m.matchId ? (
         <MatchView roomId={roomId} matchId={m.matchId} meta={m} seats={seats.data ?? {}} uid={uid} stats={stats.data} />
       ) : m.status === 'cancelled' ? (
         <ErrorState
-          title="Phòng đã bị hủy"
+          title={t('room.cancelled')}
           action={
             <Link className="btn" to="/online">
-              Về sảnh
+              {t('common.backToLobby')}
             </Link>
           }
         />
@@ -117,6 +110,7 @@ function WaitingRoom({
   memberRole: string | null;
   stats: RoomStats | null;
 }) {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const isOwner = meta.ownerUid === uid;
   const mySeat = seats.host?.uid === uid ? 'host' : seats.guest?.uid === uid ? 'guest' : null;
@@ -131,7 +125,7 @@ function WaitingRoom({
     try {
       await fn();
     } catch (e) {
-      setToast(errorVi(e));
+      setToast(errorText(e));
     } finally {
       setBusy(false);
     }
@@ -139,28 +133,28 @@ function WaitingRoom({
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setToast('Đã sao chép');
+      setToast(t('common.copied'));
     } catch {
-      setToast('Không sao chép được – hãy chọn và sao chép thủ công');
+      setToast(t('common.copyFailed'));
     }
   };
 
   const canClaim = !mySeat && !seats.guest && meta.status === 'waiting' && meta.mode === 'friendly' && (meta.visibility === 'public' || memberRole === 'player');
-  const statusText = meta.status === 'waiting' ? 'Đang chờ đối thủ' : meta.status === 'ready' ? 'Đủ người – chờ hai bên sẵn sàng' : meta.status;
+  const statusText = meta.status === 'waiting' ? t('room.statusWaiting') : meta.status === 'ready' ? t('room.statusReady') : meta.status;
 
   return (
     <div className="page narrow stack">
       <Toast message={toast} onClose={() => setToast(null)} />
       <header className="room-head">
-        <h1>Phòng {roomId}</h1>
+        <h1>{t('room.title', { roomId })}</h1>
         <div className="chips">
-          <span className="badge">{meta.visibility === 'public' ? 'Công khai' : 'Riêng tư'}</span>
+          <span className="badge">{meta.visibility === 'public' ? t('room.public') : t('room.private')}</span>
           <span className="badge">{tcLabel(meta.tc)}</span>
-          <span className="badge">Chơi với bạn · không tính điểm</span>
+          <span className="badge">{t('room.friendlyBadge')}</span>
           <span className="badge ok" data-testid="room-status">
             {statusText}
           </span>
-          <span className="badge">👁 {stats?.spectators ?? 0} người xem</span>
+          <span className="badge">{t('room.spectators', { count: stats?.spectators ?? 0 })}</span>
         </div>
       </header>
 
@@ -169,15 +163,15 @@ function WaitingRoom({
           const s = seats[k];
           return (
             <div key={k} className={`seat card${s?.ready ? ' ready' : ''}${s?.uid === uid ? ' me' : ''}`} data-testid={`seat-${k}`}>
-              <small className="muted">{k === 'host' ? 'Chủ phòng' : 'Đối thủ'}</small>
+              <small className="muted">{k === 'host' ? t('room.host') : t('room.opponent')}</small>
               <strong className="seat-name">
-                {s ? s.name : 'Ghế trống'}
-                {s?.uid === uid && <span className="muted small"> (bạn)</span>}
+                {s ? s.name : t('room.emptySeat')}
+                {s?.uid === uid && <span className="muted small"> ({t('common.you')})</span>}
               </strong>
-              {s && <span className={`badge${s.ready ? ' ok' : ''}`}>{s.ready ? 'Sẵn sàng' : 'Chưa sẵn sàng'}</span>}
+              {s && <span className={`badge${s.ready ? ' ok' : ''}`}>{s.ready ? t('room.ready') : t('room.notReady')}</span>}
               {k === 'guest' && s && isOwner && (
                 <button type="button" className="btn small" disabled={busy} onClick={() => run(() => api.kickGuest(roomId))}>
-                  Mời ra
+                  {t('room.kick')}
                 </button>
               )}
             </div>
@@ -185,9 +179,9 @@ function WaitingRoom({
         })}
       </div>
 
-      <section className="card stack room-actions" aria-label="Thao tác">
-        {mySeat && meta.status === 'waiting' && <p className="muted small">Đang chờ người thứ hai vào ghế. Gửi link phòng ở mục "Mời bạn" bên dưới.</p>}
-        {mySeat && meta.status === 'ready' && <p className="muted small">Đủ hai người. Trận bắt đầu khi cả hai bấm "Sẵn sàng".</p>}
+      <section className="card stack room-actions" aria-label={t('room.actions')}>
+        {mySeat && meta.status === 'waiting' && <p className="muted small">{t('room.waitingHint')}</p>}
+        {mySeat && meta.status === 'ready' && <p className="muted small">{t('room.readyHint')}</p>}
         <div className="row">
         {mySeat && (
           <button
@@ -197,12 +191,12 @@ function WaitingRoom({
             data-testid="ready-btn"
             onClick={() => run(() => api.setReady(roomId, !seats[mySeat]?.ready))}
           >
-            {seats[mySeat]?.ready ? 'Hủy sẵn sàng' : 'Sẵn sàng'}
+            {seats[mySeat]?.ready ? t('room.unready') : t('room.ready')}
           </button>
         )}
         {canClaim && (
           <button type="button" className="btn primary" disabled={busy} data-testid="claim-seat" onClick={() => run(() => api.joinRoom(roomId, 'player'))}>
-            Vào ghế chơi
+            {t('room.claimSeat')}
           </button>
         )}
         {mySeat && (
@@ -217,49 +211,49 @@ function WaitingRoom({
               })
             }
           >
-            {isOwner ? 'Hủy phòng' : 'Rời ghế'}
+            {isOwner ? t('room.cancelRoom') : t('room.leaveSeat')}
           </button>
         )}
-        {!mySeat && !canClaim && <span className="muted">Bạn đang xem phòng này.</span>}
+        {!mySeat && !canClaim && <span className="muted">{t('room.watching')}</span>}
         </div>
       </section>
 
       {isOwner && (
         <section className="card stack">
-          <h2 className="h3">Cài đặt phòng</h2>
-          <p className="muted small">Đổi cài đặt sẽ hủy trạng thái sẵn sàng của hai bên. Khóa khi trận bắt đầu.</p>
+          <h2 className="h3">{t('room.settings')}</h2>
+          <p className="muted small">{t('room.settingsNote')}</p>
           <div className="form-grid">
             <label>
-              Hiển thị
+              {t('room.visibility')}
               <select
                 value={meta.visibility}
                 disabled={busy}
                 onChange={(e) => run(() => api.updateRoomSettings(roomId, { visibility: e.target.value }))}
               >
-                <option value="public">Công khai (hiện ở sảnh)</option>
-                <option value="private">Riêng tư (cần lời mời)</option>
+                <option value="public">{t('room.publicOpt')}</option>
+                <option value="private">{t('room.privateOpt')}</option>
               </select>
             </label>
             <label>
-              Thời gian
+              {t('room.time')}
               <select value={meta.tc} disabled={busy} onChange={(e) => run(() => api.updateRoomSettings(roomId, { tc: e.target.value }))}>
-                {TC_OPTIONS.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
+                {TC_OPTIONS.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {tcLabel(o.id)}
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              Chủ phòng cầm
+              {t('room.ownerColor')}
               <select
                 value={meta.ownerColor}
                 disabled={busy}
                 onChange={(e) => run(() => api.updateRoomSettings(roomId, { ownerColor: e.target.value }))}
               >
-                <option value="red">Đỏ</option>
-                <option value="black">Đen</option>
-                <option value="random">Ngẫu nhiên</option>
+                <option value="red">{t('side.red')}</option>
+                <option value="black">{t('side.black')}</option>
+                <option value="random">{t('side.random')}</option>
               </select>
             </label>
           </div>
@@ -267,24 +261,35 @@ function WaitingRoom({
       )}
 
       <section className="card stack">
-        <h2 className="h3">Mời bạn</h2>
+        <h2 className="h3">{t('room.invite')}</h2>
         {meta.visibility === 'public' ? (
           <>
-            <p className="muted small">Phòng công khai: ai có link hoặc mã phòng đều vào được (ghế trống) hoặc xem.</p>
-            <div className="copy-row">
-              <input readOnly value={roomLink} aria-label="Link phòng" />
-              <button type="button" className="btn" onClick={() => copy(roomLink)}>
-                Sao chép
-              </button>
+            <p className="muted small">{t('room.publicNote')}</p>
+            <div className="invite-box">
+              <div className="invite-field">
+                <span className="muted small">{t('room.roomLink')}</span>
+                <div className="copy-row">
+                  <input readOnly value={roomLink} aria-label={t('room.roomLink')} />
+                  <button type="button" className="btn" onClick={() => copy(roomLink)}>
+                    {t('room.copyLink')}
+                  </button>
+                </div>
+              </div>
+              <div className="invite-field">
+                <span className="muted small">{t('room.roomCode')}</span>
+                <div className="copy-row">
+                  <input readOnly value={roomId} aria-label={t('room.roomCode')} className="code-input" />
+                  <button type="button" className="btn" onClick={() => copy(roomId)}>
+                    {t('room.copyCode')}
+                  </button>
+                </div>
+              </div>
             </div>
-            <p className="small">
-              Mã phòng: <code>{roomId}</code>
-            </p>
           </>
         ) : isOwner ? (
           <>
             <p className="muted small">
-              Phòng riêng tư: chỉ người có lời mời hợp lệ mới vào được. Lời mời chơi và lời mời xem tách quyền; mã có hạn 24 giờ và thu hồi được.
+              {t('room.privateNote')}
             </p>
             <div className="row">
               <button
@@ -299,7 +304,7 @@ function WaitingRoom({
                   })
                 }
               >
-                Tạo lời mời CHƠI
+                {t('room.invitePlayer')}
               </button>
               <button
                 type="button"
@@ -313,25 +318,31 @@ function WaitingRoom({
                   })
                 }
               >
-                Tạo lời mời XEM
+                {t('room.inviteSpectator')}
               </button>
             </div>
             {invite && (
               <div className="invite-box">
-                <p className="small">
-                  Lời mời <strong>{invite.role === 'player' ? 'chơi' : 'xem'}</strong> (chỉ hiển thị một lần):
+                <p className="small invite-title">
+                  <Trans i18nKey={invite.role === 'player' ? 'room.inviteOnce_player' : 'room.inviteOnce_spectator'} components={{ b: <strong /> }} />
                 </p>
-                <div className="copy-row">
-                  <input readOnly value={invite.link} aria-label="Link mời" data-testid="invite-link" />
-                  <button type="button" className="btn" onClick={() => copy(invite.link)}>
-                    Sao chép link
-                  </button>
+                <div className="invite-field">
+                  <span className="muted small">{t('room.inviteLink')}</span>
+                  <div className="copy-row">
+                    <input readOnly value={invite.link} aria-label={t('room.inviteLink')} data-testid="invite-link" />
+                    <button type="button" className="btn" onClick={() => copy(invite.link)}>
+                      {t('room.copyLink')}
+                    </button>
+                  </div>
                 </div>
-                <div className="copy-row">
-                  <input readOnly value={invite.token} aria-label="Mã mời" />
-                  <button type="button" className="btn" onClick={() => copy(invite.token)}>
-                    Sao chép mã
-                  </button>
+                <div className="invite-field">
+                  <span className="muted small">{t('room.inviteCode')}</span>
+                  <div className="copy-row">
+                    <input readOnly value={invite.token} aria-label={t('room.inviteCode')} />
+                    <button type="button" className="btn" onClick={() => copy(invite.token)}>
+                      {t('room.copyCode')}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -339,12 +350,12 @@ function WaitingRoom({
               <ul className="invite-list">
                 {Object.entries(invites.data).map(([id, inv]) => (
                   <li key={id}>
-                    {inv.role === 'player' ? 'Chơi' : 'Xem'} · hết hạn {new Date(inv.expiresAt).toLocaleString('vi-VN')}{' '}
+                    {inv.role === 'player' ? t('room.inviteRolePlayer') : t('room.inviteRoleSpectator')} · {t('room.expires', { time: fmtDateTime(inv.expiresAt) })}{' '}
                     {inv.revoked ? (
-                      <span className="badge">Đã thu hồi</span>
+                      <span className="badge">{t('room.revoked')}</span>
                     ) : (
                       <button type="button" className="btn small" disabled={busy} onClick={() => run(() => api.revokeInvite(roomId, id))}>
-                        Thu hồi
+                        {t('room.revoke')}
                       </button>
                     )}
                   </li>
@@ -353,7 +364,7 @@ function WaitingRoom({
             )}
           </>
         ) : (
-          <p className="muted small">Chỉ chủ phòng tạo được lời mời cho phòng riêng tư.</p>
+          <p className="muted small">{t('room.ownerOnlyInvite')}</p>
         )}
       </section>
     </div>
@@ -386,6 +397,7 @@ function MatchView({
   uid: string;
   stats: RoomStats | null;
 }) {
+  const { t } = useTranslation();
   const nav = useNavigate();
   const st = useRtdb<MatchState>(`rooms/${roomId}/matches/${matchId}/state`);
   const players = useRtdb<MatchPlayers>(`rooms/${roomId}/matches/${matchId}/players`);
@@ -460,9 +472,9 @@ function MatchView({
       setBusy(true);
       try {
         const r = await api.matchAction({ roomId, matchId, commandId: newCommandId(), expectedVersion: state.v, type, accept });
-        if (!r.ok && r.code !== 'duplicate') setToast(CODE_VI[r.code] ?? r.message ?? r.code);
+        if (!r.ok && r.code !== 'duplicate') setToast(commandText(r));
       } catch (e) {
-        setToast(errorVi(e));
+        setToast(errorText(e));
       } finally {
         setBusy(false);
       }
@@ -502,7 +514,7 @@ function MatchView({
         const r = await api.submitMove(payload);
         if (!r.ok && r.code !== 'duplicate') {
           setPending(null); // rollback lạc quan
-          setToast(CODE_VI[r.code] ?? r.message ?? 'Nước đi bị từ chối');
+          setToast(r.message || r.messageKey || r.code ? commandText(r) : t('room.rejected'));
         }
         return;
       } catch (e) {
@@ -510,7 +522,7 @@ function MatchView({
         const retryable = /unavailable|deadline-exceeded|internal|network/i.test(code) || !navigator.onLine;
         if (!retryable || attempt === 2) {
           setPending(null);
-          setToast(errorVi(e));
+          setToast(errorText(e));
           return;
         }
         // Gửi lại CÙNG commandId: nếu lần trước đã commit mà mất ACK, server trả kết quả cũ.
@@ -529,9 +541,9 @@ function MatchView({
   );
   const targetsOf = useCallback((sq: number) => (display ? display.legalTargets(sq) : []), [display]);
 
-  if (st.loading || players.loading) return <Spinner label="Đang tải trận…" />;
-  if (st.error) return <ErrorState message={st.error === 'permission_denied' ? 'Bạn không có quyền xem trận này' : st.error} />;
-  if (!state || !players.data || !display) return <ErrorState message="Không đọc được dữ liệu trận" />;
+  if (st.loading || players.loading) return <Spinner label={t('room.loadingMatch')} />;
+  if (st.error) return <ErrorState message={st.error === 'permission_denied' ? t('room.noAccess') : st.error} />;
+  if (!state || !players.data || !display) return <ErrorState message={t('room.readFailed')} />;
 
   const lm = pending
     ? { from: pending.from, to: pending.to }
@@ -548,10 +560,10 @@ function MatchView({
   const res = state.result;
   let resultText = '';
   if (res) {
-    if (state.status === 'aborted') resultText = 'Trận bị hủy';
-    else if (res.winner === 'draw') resultText = 'Hòa';
-    else if (mySide) resultText = res.winner === mySide ? 'Bạn thắng!' : 'Bạn thua';
-    else resultText = `${pl[res.winner].name} (${res.winner === 'red' ? 'Đỏ' : 'Đen'}) thắng`;
+    if (state.status === 'aborted') resultText = t('room.aborted');
+    else if (res.winner === 'draw') resultText = t('room.draw');
+    else if (mySide) resultText = res.winner === mySide ? t('room.youWin') : t('room.youLose');
+    else resultText = t('room.winnerIs', { name: pl[res.winner].name, side: t(`side.${res.winner}`) });
   }
   const isFriendly = meta.mode === 'friendly';
   const rematchMine = !!meta.rematch?.[uid];
@@ -561,8 +573,8 @@ function MatchView({
     <div className="game-layout">
       <Toast message={toast} onClose={() => setToast(null)} />
       {confirmResign && (
-        <Modal title="Đầu hàng?" onClose={() => setConfirmResign(false)}>
-          <p>Bạn chắc chắn muốn đầu hàng ván này?</p>
+        <Modal title={t('room.resignTitle')} onClose={() => setConfirmResign(false)}>
+          <p>{t('room.resignConfirm')}</p>
           <div className="row">
             <button
               type="button"
@@ -573,10 +585,10 @@ function MatchView({
                 void send('resign');
               }}
             >
-              Đầu hàng
+              {t('common.resign')}
             </button>
             <button type="button" className="btn" onClick={() => setConfirmResign(false)}>
-              Hủy
+              {t('common.cancel')}
             </button>
           </div>
         </Modal>
@@ -601,7 +613,7 @@ function MatchView({
           checkSq={checkSq}
           pendingTo={pending?.to ?? null}
           disabled={!myTurn}
-          ariaLabel={isPlayer ? 'Bàn cờ – trận online' : 'Bàn cờ – chế độ xem'}
+          ariaLabel={isPlayer ? t('board.online') : t('board.spectate')}
         />
         <PlayerBar
           name={pl[bottom].name}
@@ -616,25 +628,25 @@ function MatchView({
       <aside className="side-col">
         <div className="card">
           <div className="row between">
-            <strong>{meta.mode === 'ranked' ? 'Đấu xếp hạng' : 'Chơi với bạn'}</strong>
+            <strong>{meta.mode === 'ranked' ? t('room.rankedGame') : t('room.friendlyGame')}</strong>
             <span className="muted small">
               {tcLabel(meta.tc)} · 👁 <span data-testid="spectators">{stats?.spectators ?? 0}</span>
             </span>
           </div>
-          {!isPlayer && <p className="badge">Bạn đang xem (chỉ đọc)</p>}
+          {!isPlayer && <p className="badge">{t('room.spectatorBadge')}</p>}
           {!over && (
             <p className="muted small" aria-live="polite" data-testid="turn-indicator">
               {pending
-                ? 'Đang gửi nước đi…'
+                ? t('room.sending')
                 : myTurn
-                  ? 'Đến lượt bạn'
-                  : `Lượt ${state.turn === 'red' ? 'Đỏ' : 'Đen'}`}
-              {firstMoveLeft !== null && ` · nước đầu trong ${Math.ceil(firstMoveLeft / 1000)} giây`}
+                  ? t('room.yourTurn')
+                  : t('room.turnOf', { side: t(`side.${state.turn}`) })}
+              {firstMoveLeft !== null && t('room.firstMove', { seconds: Math.ceil(firstMoveLeft / 1000) })}
             </p>
           )}
-          {state.inCheck && !over && <p className="check-alert">Chiếu tướng!</p>}
+          {state.inCheck && !over && <p className="check-alert">{t('room.check')}</p>}
           {res && (
-            <ResultBanner text={resultText} sub={END_REASON_VI[res.reason]}>
+            <ResultBanner text={resultText} sub={t(`endReason.${res.reason}`)}>
               {isPlayer && isFriendly && meta.status === 'finished' && (
                 <button
                   type="button"
@@ -646,23 +658,23 @@ function MatchView({
                     try {
                       await api.requestRematch(roomId);
                     } catch (e) {
-                      setToast(errorVi(e));
+                      setToast(errorText(e));
                     } finally {
                       setBusy(false);
                     }
                   }}
                 >
-                  {rematchMine ? 'Đã mời đấu lại…' : rematchOther ? 'Chấp nhận đấu lại' : 'Đấu lại'}
+                  {rematchMine ? t('room.rematchSent') : rematchOther ? t('room.rematchAccept') : t('room.rematch')}
                 </button>
               )}
               {meta.mode === 'ranked' && isPlayer && (
                 <button type="button" className="btn primary" onClick={() => nav('/ranked')}>
-                  Tìm trận mới
+                  {t('room.findNew')}
                 </button>
               )}
               {state.status !== 'aborted' && (
                 <Link className="btn" to={`/replay/${matchId}`}>
-                  Xem lại
+                  {t('common.replay')}
                 </Link>
               )}
             </ResultBanner>
@@ -671,29 +683,29 @@ function MatchView({
             <>
               {state.drawOffer === opp && (
                 <div className="offer" role="alert">
-                  Đối thủ đề nghị hòa.
+                  {t('room.drawOffered')}
                   <button type="button" className="btn small primary" disabled={busy} onClick={() => send('respondDraw', true)}>
-                    Đồng ý
+                    {t('common.accept')}
                   </button>
                   <button type="button" className="btn small" disabled={busy} onClick={() => send('respondDraw', false)}>
-                    Từ chối
+                    {t('common.decline')}
                   </button>
                 </div>
               )}
               {state.undoRequest === opp && (
                 <div className="offer" role="alert">
-                  Đối thủ xin đi lại.
+                  {t('room.undoRequested')}
                   <button type="button" className="btn small primary" disabled={busy} onClick={() => send('respondUndo', true)}>
-                    Đồng ý
+                    {t('common.accept')}
                   </button>
                   <button type="button" className="btn small" disabled={busy} onClick={() => send('respondUndo', false)}>
-                    Từ chối
+                    {t('common.decline')}
                   </button>
                 </div>
               )}
               <div className="actions">
                 <button type="button" className="btn danger" disabled={busy} data-testid="resign" onClick={() => setConfirmResign(true)}>
-                  Đầu hàng
+                  {t('common.resign')}
                 </button>
                 <button
                   type="button"
@@ -702,16 +714,16 @@ function MatchView({
                   data-testid="offer-draw"
                   onClick={() => send('offerDraw')}
                 >
-                  {state.drawOffer === mySide ? 'Đã đề nghị hòa' : 'Đề nghị hòa'}
+                  {state.drawOffer === mySide ? t('room.drawSent') : t('room.offerDraw')}
                 </button>
                 {isFriendly && (
                   <button type="button" className="btn" disabled={busy || !!state.undoRequest || state.ply === 0} onClick={() => send('requestUndo')}>
-                    Xin đi lại
+                    {t('room.requestUndo')}
                   </button>
                 )}
                 {oppOfflineSince !== null && Date.now() - oppOfflineSince > 60_000 && (
                   <button type="button" className="btn" disabled={busy} onClick={() => send('claimAbandon')}>
-                    Xử thắng (đối thủ bỏ trận)
+                    {t('room.claimAbandon')}
                   </button>
                 )}
               </div>
@@ -719,18 +731,18 @@ function MatchView({
           )}
           <div className="actions">
             <button type="button" className="btn" onClick={() => setFlipped((f) => !f)}>
-              Lật bàn
+              {t('common.flipBoard')}
             </button>
             <Link className="btn" to="/online">
-              Về sảnh
+              {t('common.backToLobby')}
             </Link>
           </div>
           <SoundControl />
-          {oppOnline === false && !over && <p className="muted small">Đối thủ đang mất kết nối. Đồng hồ vẫn chạy.</p>}
+          {oppOnline === false && !over && <p className="muted small">{t('room.oppOffline')}</p>}
         </div>
         <div className="card grow">
-          <h2 className="h3">Nước đi</h2>
-          <MoveList moves={confirmed?.history.map((h) => h.vn) ?? []} />
+          <h2 className="h3">{t('panel.moves')}</h2>
+          <MoveList moves={confirmed?.history.map(moveText) ?? []} />
         </div>
         <SeatsNote seats={seats} />
       </aside>
@@ -739,11 +751,12 @@ function MatchView({
 }
 
 function SeatsNote({ seats }: { seats: Seats }) {
+  const { t } = useTranslation();
   if (!seats.host) return null;
   return (
     <p className="muted small">
-      Chủ phòng: {seats.host.name}
-      {seats.guest ? ` · Đối thủ: ${seats.guest.name}` : ''}
+      {t('room.seatsNote', { host: seats.host.name })}
+      {seats.guest ? t('room.seatsNoteGuest', { guest: seats.guest.name }) : ''}
     </p>
   );
 }

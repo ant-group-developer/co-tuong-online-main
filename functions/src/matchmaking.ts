@@ -2,11 +2,11 @@
  * Đấu xếp hạng: server ghép đối thủ theo rating + time control. Link bạn bè KHÔNG dùng được cho ranked.
  * Client gọi mmEnqueue định kỳ (~4s) khi đang chờ: vừa làm "heartbeat", vừa mở rộng khoảng rating theo thời gian.
  */
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { onCall } from 'firebase-functions/v2/https';
 import { RANKED_TIME_CONTROLS, RATING_CONFIG, REGION } from './config.js';
 import { mmCancel, mmEnqueue, type Assignment, type MmState } from './core/matchmaking-core.js';
 import { newRankedRoom, type RoomDoc } from './core/room-core.js';
-import { ENFORCE_APP_CHECK, displayNameOf, fs, randomId, requireAuth, rtdb } from './firebase.js';
+import { ENFORCE_APP_CHECK, httpsError, displayNameOf, fs, randomId, requireAuth, rtdb } from './firebase.js';
 import { afterMatchStarted, assertNotInOtherRoom, syncPublicIndex, syncUserRooms } from './sync.js';
 
 // invoker 'public': Cloud Run cho phép gọi; xác thực Firebase Auth vẫn do requireAuth kiểm tra.
@@ -51,7 +51,7 @@ export const mmEnqueueFn = onCall(callOpts, async (req) => {
   // Khách (anonymous) cũng được đấu xếp hạng: mỗi trình duyệt có một ID khách cố định.
   const user = requireAuth(req);
   const tc = (req.data as { tc?: unknown })?.tc;
-  if (typeof tc !== 'string' || !RANKED_TIME_CONTROLS.includes(tc)) throw new HttpsError('invalid-argument', 'Thời gian không hợp lệ cho đấu xếp hạng');
+  if (typeof tc !== 'string' || !RANKED_TIME_CONTROLS.includes(tc)) throw httpsError('invalid-argument', 'Thời gian không hợp lệ cho đấu xếp hạng');
   // Đang ngồi ở phòng chơi với bạn thì không cho vào hàng chờ (phòng xếp hạng do chính matchmaking xử lý).
   await assertNotInOtherRoom(user.uid, { onlyMode: 'friendly' });
   const [rating, name] = await Promise.all([currentRating(user.uid), displayNameOf(user)]);
@@ -67,7 +67,7 @@ export const mmEnqueueFn = onCall(callOpts, async (req) => {
       return outcome.state;
     });
   const o = outcome as ReturnType<typeof mmEnqueue> | null;
-  if (!o) throw new HttpsError('internal', 'Lỗi hàng chờ');
+  if (!o) throw httpsError('internal', 'Lỗi hàng chờ');
   if (o.newPair) {
     const { a, b, roomId, matchId } = o.newPair;
     await ensureRankedRoom({ roomId, matchId, a, b, tc });

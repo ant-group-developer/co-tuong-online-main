@@ -14,6 +14,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:5174',
     channel: process.env.PW_CHANNEL ?? 'chrome',
+    // Giao diện tự chọn ngôn ngữ theo trình duyệt: cố định tiếng Việt cho các test (test đổi ngôn ngữ tự bấm EN).
+    locale: 'vi-VN',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

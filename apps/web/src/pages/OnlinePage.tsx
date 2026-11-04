@@ -3,17 +3,19 @@
  */
 import { endBefore, get, limitToLast, onValue, orderByChild, query, ref } from 'firebase/database';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { EmptyState, ErrorState, NotConfigured, Spinner, Toast } from '../components/common';
-import { alreadyInRoomOf, api, errorVi, TC_OPTIONS, type Tc } from '../lib/api';
+import { alreadyInRoomOf, api, errorText, tcLabel, TC_OPTIONS, type Tc } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { fb } from '../lib/firebase';
-import { ROOM_STATUS_VI, useMyActiveRoom } from '../lib/myroom';
+import { useMyActiveRoom } from '../lib/myroom';
 import type { PublicRoom } from '../lib/types';
 
 const PAGE = 15;
 
 export function OnlinePage() {
+  const { t } = useTranslation();
   const auth = useAuth();
   const nav = useNavigate();
   const [rooms, setRooms] = useState<PublicRoom[] | null>(null);
@@ -47,10 +49,10 @@ export function OnlinePage() {
             setRooms(list);
             setHasMore(list.length === PAGE);
           },
-          (e) => setError(errorVi(e)),
+          (e) => setError(errorText(e)),
         );
       })
-      .catch((e) => setError(errorVi(e)));
+      .catch((e) => setError(errorText(e)));
     return () => unsub?.();
   }, [auth.configured, auth.ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -78,7 +80,7 @@ export function OnlinePage() {
     } catch (err) {
       const other = alreadyInRoomOf(err);
       if (other) nav(`/room/${other}`);
-      else setToast(errorVi(err));
+      else setToast(errorText(err));
     } finally {
       setBusy(false);
     }
@@ -95,7 +97,7 @@ export function OnlinePage() {
     else if (mRoom) nav(`/room/${mRoom[1]}`);
     else if (/^[a-z0-9]{6,24}$/.test(v)) nav(`/room/${v}`);
     else if (/^[A-Za-z0-9_-]{20,100}$/.test(v)) nav(`/join/${v}`);
-    else setToast('Mã không hợp lệ');
+    else setToast(t('online.badCode'));
   };
 
   if (!auth.configured) return <NotConfigured />;
@@ -104,18 +106,16 @@ export function OnlinePage() {
   return (
     <div className="page">
       <Toast message={toast} onClose={() => setToast(null)} />
-      <h1>Phòng & xem trận</h1>
+      <h1>{t('online.title')}</h1>
       {myRoom && (
         <div className="card highlight my-room" data-testid="my-room">
           <div className="stack-tight">
-            <strong>
-              Bạn đang ở {myRoom.mode === 'ranked' ? 'trận xếp hạng' : 'phòng'} {myRoom.roomId}
-            </strong>
-            <span className="muted small">{ROOM_STATUS_VI[myRoom.status]}. Rời phòng đó trước khi tạo hoặc vào phòng khác.</span>
+            <strong>{t(myRoom.mode === 'ranked' ? 'online.inRanked' : 'online.inRoom', { roomId: myRoom.roomId })}</strong>
+            <span className="muted small">{t('online.inRoomNote', { status: t(`roomStatus.${myRoom.status}`) })}</span>
           </div>
           <div className="row">
             <Link className="btn primary" to={`/room/${myRoom.roomId}`} data-testid="my-room-back">
-              Quay lại phòng
+              {t('nav.backToRoom')}
             </Link>
           </div>
         </div>
@@ -123,17 +123,17 @@ export function OnlinePage() {
       <div className="two-col">
         <section className="stack">
           <div className="row between">
-            <h2 className="h3">Phòng công khai</h2>
+            <h2 className="h3">{t('online.publicRooms')}</h2>
             <Link to="/ranked" className="btn small">
-              Đấu xếp hạng →
+              {t('online.goRanked')}
             </Link>
           </div>
           {error ? (
             <ErrorState message={error} />
           ) : rooms === null ? (
-            <Spinner label="Đang tải danh sách phòng…" />
+            <Spinner label={t('online.loadingRooms')} />
           ) : all.length === 0 ? (
-            <EmptyState title="Chưa có phòng nào" message="Hãy tạo phòng mới và mời bạn bè." />
+            <EmptyState title={t('online.noRooms')} message={t('online.noRoomsHint')} />
           ) : (
             <ul className="room-list" data-testid="room-list">
               {all.map((r) => {
@@ -143,18 +143,18 @@ export function OnlinePage() {
                     <div>
                       <strong>{playing && r.redName ? `${r.redName} vs ${r.blackName}` : r.hostName ?? r.ownerName}</strong>
                       <small className="muted">
-                        {r.mode === 'ranked' ? 'Xếp hạng' : 'Giao hữu'} · {r.tcLabel} ·{' '}
-                        {playing ? 'Đang đấu' : r.seatsFree ? 'Chờ đối thủ (1 ghế trống)' : 'Đủ người'} · 👁 {r.spectators ?? 0}
+                        {r.mode === 'ranked' ? t('online.ranked') : t('online.friendly')} · {tcLabel(r.tc)} ·{' '}
+                        {playing ? t('online.playingNow') : r.seatsFree ? t('online.waitingSeat') : t('online.full')} · 👁 {r.spectators ?? 0}
                       </small>
                     </div>
                     <div className="row">
                       {r.status === 'waiting' && r.seatsFree > 0 && r.mode === 'friendly' && (
                         <Link className="btn primary small" to={`/room/${r.roomId}`}>
-                          Vào chơi
+                          {t('online.join')}
                         </Link>
                       )}
                       <Link className="btn small" to={`/room/${r.roomId}`}>
-                        Xem
+                        {t('online.watch')}
                       </Link>
                     </div>
                   </li>
@@ -163,55 +163,55 @@ export function OnlinePage() {
             </ul>
           )}
           {hasMore && (
-            <button type="button" className="btn" onClick={() => void loadMore().catch((e) => setToast(errorVi(e)))}>
-              Tải thêm
+            <button type="button" className="btn" onClick={() => void loadMore().catch((e) => setToast(errorText(e)))}>
+              {t('common.loadMore')}
             </button>
           )}
         </section>
         <section className="stack">
-          <form className="card stack" onSubmit={create} aria-label="Tạo phòng chơi với bạn">
-            <h2 className="h3">Chơi với bạn – tạo phòng</h2>
-            <p className="muted small">Không tính điểm xếp hạng. Đấu xếp hạng do hệ thống ghép đối thủ.</p>
+          <form className="card stack" onSubmit={create} aria-label={t('online.createTitle')}>
+            <h2 className="h3">{t('online.createTitle')}</h2>
+            <p className="muted small">{t('online.createNote')}</p>
             <div className="form-grid">
               <label>
-                Hiển thị
+                {t('online.visibility')}
                 <select value={visibility} onChange={(e) => setVisibility(e.target.value as 'public' | 'private')} data-testid="create-visibility">
-                  <option value="public">Công khai</option>
-                  <option value="private">Riêng tư</option>
+                  <option value="public">{t('online.public')}</option>
+                  <option value="private">{t('online.private')}</option>
                 </select>
               </label>
               <label>
-                Thời gian
+                {t('online.time')}
                 <select value={tc} onChange={(e) => setTc(e.target.value as Tc)}>
-                  {TC_OPTIONS.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
+                  {TC_OPTIONS.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {tcLabel(o.id)}
                     </option>
                   ))}
                 </select>
               </label>
               <label>
-                Bạn cầm
+                {t('online.youPlay')}
                 <select value={color} onChange={(e) => setColor(e.target.value as 'red' | 'black' | 'random')} data-testid="create-color">
-                  <option value="random">Ngẫu nhiên</option>
-                  <option value="red">Đỏ</option>
-                  <option value="black">Đen</option>
+                  <option value="random">{t('side.random')}</option>
+                  <option value="red">{t('side.red')}</option>
+                  <option value="black">{t('side.black')}</option>
                 </select>
               </label>
             </div>
             <div className="row">
               <button type="submit" className="btn primary" disabled={busy || !!myRoom} data-testid="create-room">
-                Tạo phòng
+                {t('online.create')}
               </button>
-              {myRoom && <span className="muted small">Bạn đang ở phòng {myRoom.roomId}</span>}
+              {myRoom && <span className="muted small">{t('online.inRoom', { roomId: myRoom.roomId })}</span>}
             </div>
           </form>
-          <form className="card stack" onSubmit={join} aria-label="Vào phòng bằng mã">
-            <h2 className="h3">Có mã phòng / mã mời?</h2>
+          <form className="card stack" onSubmit={join} aria-label={t('online.haveCode')}>
+            <h2 className="h3">{t('online.haveCode')}</h2>
             <div className="copy-row">
-              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Dán link hoặc mã" aria-label="Link hoặc mã" />
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('online.codePlaceholder')} aria-label={t('online.codeLabel')} />
               <button type="submit" className="btn">
-                Vào
+                {t('online.enter')}
               </button>
             </div>
           </form>

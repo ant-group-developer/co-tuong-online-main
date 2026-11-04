@@ -1,52 +1,85 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { LANGS, setLang, type Lang } from '../i18n';
 import { useAuth } from '../lib/auth';
 import { envVar } from '../lib/env';
-import { ROOM_STATUS_VI, useMyActiveRoom } from '../lib/myroom';
+import { useMyActiveRoom } from '../lib/myroom';
 
-export const APP_NAME = envVar('VITE_APP_NAME') || 'Cờ Tướng Online';
+/** Tên ứng dụng: VITE_APP_NAME (nếu đặt) hoặc tên theo ngôn ngữ. */
+export function useAppName(): string {
+  const { t } = useTranslation();
+  return envVar('VITE_APP_NAME') || t('meta.title');
+}
 
-/** Thanh nhắc "bạn đang ở phòng X" trên mọi trang (trừ chính phòng đó). */
+/** Thanh nhắc "bạn đang ở phòng X" trên mọi trang (trừ chính phòng đó và sảnh). */
 function ActiveRoomBar() {
+  const { t } = useTranslation();
   const my = useMyActiveRoom();
   const loc = useLocation();
-  // Trang sảnh /online đã có thẻ "Bạn đang ở phòng" riêng.
   if (!my || loc.pathname === `/room/${my.roomId}` || loc.pathname === '/online') return null;
   return (
     <div className="active-room-bar" role="status" data-testid="active-room-bar">
       <span>
-        Bạn đang ở {my.mode === 'ranked' ? 'trận xếp hạng' : 'phòng'} <strong>{my.roomId}</strong> · {ROOM_STATUS_VI[my.status]}
+        <Trans
+          i18nKey={my.mode === 'ranked' ? 'nav.activeRanked' : 'nav.activeRoom'}
+          values={{ roomId: my.roomId, status: t(`roomStatus.${my.status}`) }}
+          components={{ b: <strong /> }}
+        />
       </span>
       <Link className="btn primary small" to={`/room/${my.roomId}`} data-testid="back-to-room">
-        Quay lại phòng
+        {t('nav.backToRoom')}
       </Link>
     </div>
   );
 }
 
+export function LangSwitch() {
+  const { t, i18n } = useTranslation();
+  return (
+    <div className="lang-switch" role="group" aria-label={t('lang.label')}>
+      {LANGS.map((l: Lang) => (
+        <button
+          key={l}
+          type="button"
+          className={i18n.language === l ? 'active' : ''}
+          aria-pressed={i18n.language === l}
+          title={t(`lang.${l}`)}
+          onClick={() => setLang(l)}
+          data-testid={`lang-${l}`}
+        >
+          {l.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Layout() {
+  const { t } = useTranslation();
   const auth = useAuth();
   const loc = useLocation();
+  const appName = useAppName();
   const [open, setOpen] = useState(false);
   const links = [
-    { to: '/ai', label: 'Chơi với máy' },
-    { to: '/ranked', label: 'Xếp hạng' },
-    { to: '/online', label: 'Phòng & xem trận' },
-    { to: '/leaderboard', label: 'Bảng xếp hạng' },
+    { to: '/ai', label: t('nav.ai') },
+    { to: '/ranked', label: t('nav.ranked') },
+    { to: '/online', label: t('nav.online') },
+    { to: '/leaderboard', label: t('nav.leaderboard') },
   ];
   const onProfile = loc.pathname === '/profile';
   const loginTab = onProfile && new URLSearchParams(loc.search).get('tab') === 'login';
   return (
     <div className="app">
       <a className="skip-link" href="#main">
-        Bỏ qua tới nội dung
+        {t('nav.skip')}
       </a>
       <header className="topbar">
-        <Link to="/" className="brand" aria-label={`${APP_NAME} – Trang chủ`}>
+        <Link to="/" className="brand" aria-label={`${appName} – ${t('nav.home')}`}>
           <img src="/logo.png" alt="" width={36} height={36} />
-          <span>{APP_NAME}</span>
+          <span>{appName}</span>
         </Link>
-        <button type="button" className="btn btn-icon menu-toggle" aria-expanded={open} aria-label="Mở menu" onClick={() => setOpen((v) => !v)}>
+        <button type="button" className="btn btn-icon menu-toggle" aria-expanded={open} aria-label={t('nav.openMenu')} onClick={() => setOpen((v) => !v)}>
           ☰
         </button>
         <nav className={`nav${open ? ' open' : ''}`} onClick={() => setOpen(false)}>
@@ -60,14 +93,15 @@ export function Layout() {
               <span className="nav-avatar" aria-hidden="true">
                 {auth.displayName.slice(0, 1).toUpperCase() || '?'}
               </span>
-              {auth.displayName || 'Hồ sơ'}
+              {auth.displayName || t('nav.profile')}
             </Link>
           )}
           {auth.configured && auth.isAnonymous && (
             <Link to="/profile?tab=login" className={loginTab ? 'active' : ''}>
-              Đăng nhập
+              {t('nav.signIn')}
             </Link>
           )}
+          <LangSwitch />
         </nav>
       </header>
       <ActiveRoomBar />
@@ -75,9 +109,11 @@ export function Layout() {
         <Outlet />
       </main>
       <footer className="footer">
-        <span>© {new Date().getFullYear()} {APP_NAME}</span>
-        <span className="muted">Luật: xq-rules-v1 (giản lược, xem Hướng dẫn)</span>
-        <Link to="/rules">Luật & chính sách</Link>
+        <span>
+          © {new Date().getFullYear()} {appName}
+        </span>
+        <span className="muted">{t('footer.rules')}</span>
+        <Link to="/rules">{t('footer.rulesLink')}</Link>
       </footer>
     </div>
   );

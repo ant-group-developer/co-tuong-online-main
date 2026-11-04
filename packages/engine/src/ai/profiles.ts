@@ -31,7 +31,7 @@ export const AI_PROFILES: Record<AiLevel, AiProfile> = {
   super_easy: {
     id: 'super_easy',
     label: 'Siêu dễ',
-    description: 'Gần như ngẫu nhiên, thường bỏ quân.',
+    description: 'Nhìn 1 nửa nước, 45% số nước đi ngẫu nhiên: rất hay mất quân.',
     features: {
       maxDepth: 1,
       timeMs: 120,
@@ -50,7 +50,7 @@ export const AI_PROFILES: Record<AiLevel, AiProfile> = {
   easy: {
     id: 'easy',
     label: 'Dễ',
-    description: 'Biết giá trị quân, ăn quân cơ bản, nhìn nông.',
+    description: 'Nhìn 1 nước mỗi bên + chuỗi ăn quân ngắn; 15% chọn nước kém hơn tới 2 tốt, 4% đi ngẫu nhiên.',
     features: {
       maxDepth: 2,
       timeMs: 250,
@@ -69,7 +69,7 @@ export const AI_PROFILES: Record<AiLevel, AiProfile> = {
   medium: {
     id: 'medium',
     label: 'Trung bình',
-    description: 'Né mất quân đơn giản, tìm kiếm 3–4 lớp.',
+    description: 'Nhìn 2 nước mỗi bên + tìm hết chuỗi ăn quân; 5% chọn nước kém hơn tới 0,8 tốt.',
     features: {
       maxDepth: 4,
       timeMs: 600,
@@ -88,7 +88,7 @@ export const AI_PROFILES: Record<AiLevel, AiProfile> = {
   hard: {
     id: 'hard',
     label: 'Khó',
-    description: 'Tìm kiếm nhiều lớp, đánh giá thế trận, không cố ý sai.',
+    description: 'Tới 8 nửa nước trong 1,2 giây (đo được trung bình ~6), không cố ý đi sai.',
     features: {
       maxDepth: 8,
       timeMs: 1200,
@@ -107,7 +107,7 @@ export const AI_PROFILES: Record<AiLevel, AiProfile> = {
   super_hard: {
     id: 'super_hard',
     label: 'Siêu khó',
-    description: 'Ngân sách cao, đủ TT/quiescence/null-move/LMR.',
+    description: 'Tới 16 nửa nước trong 2,5 giây (trung bình ~11), thêm null-move/LMR để tính sâu hơn.',
     features: {
       maxDepth: 16,
       timeMs: 2500,
@@ -126,7 +126,7 @@ export const AI_PROFILES: Record<AiLevel, AiProfile> = {
   master: {
     id: 'master',
     label: 'Bậc thầy (Master)',
-    description: 'Profile mạnh nhất của engine: ngân sách lớn nhất, không có sai lầm ngẫu nhiên.',
+    description: 'Mức mạnh nhất: tới 5 giây mỗi nước (trung bình ~12 nửa nước), không cố ý đi sai.',
     features: {
       maxDepth: 40,
       timeMs: 5000,

@@ -2,6 +2,7 @@
  * Gọi Cloud Functions (callable). Client chỉ gửi intent; không bao giờ gửi bàn cờ/kết quả/rating.
  */
 import { httpsCallable } from 'firebase/functions';
+import i18n from '../i18n';
 import { fb } from './firebase';
 
 async function call<T>(name: string, data: unknown): Promise<T> {
@@ -17,17 +18,18 @@ export function newCommandId(): string {
 }
 
 export type Tc = '5+0' | '10+5' | '15+10';
-export const TC_OPTIONS: Array<{ id: Tc; label: string; ranked: boolean }> = [
-  { id: '5+0', label: '5 phút', ranked: true },
-  { id: '10+5', label: '10 phút + 5 giây', ranked: true },
-  { id: '15+10', label: '15 phút + 10 giây', ranked: false },
+export const TC_OPTIONS: Array<{ id: Tc; ranked: boolean }> = [
+  { id: '5+0', ranked: true },
+  { id: '10+5', ranked: true },
+  { id: '15+10', ranked: false },
 ];
-export const tcLabel = (id: string) => TC_OPTIONS.find((t) => t.id === id)?.label ?? id;
+export const tcLabel = (id: string): string => (i18n.exists(`tc.${id}`) ? i18n.t(`tc.${id}` as 'tc.5+0') : id);
 
 export interface CommandResponse {
   ok: boolean;
   code: string;
   message: string | null;
+  messageKey?: string | null;
   version: number | null;
   status: string | null;
 }
@@ -67,17 +69,30 @@ export function alreadyInRoomOf(e: unknown): string | null {
   return d?.code === 'already_in_room' && d.roomId ? d.roomId : null;
 }
 
-/** Thông báo lỗi tiếng Việt từ lỗi Functions/Firebase. */
-export function errorVi(e: unknown): string {
-  const err = e as { code?: string; message?: string };
+type Params = Record<string, unknown>;
+
+/** Dịch một khóa thông báo của server (functions/src/messages.ts); null nếu không có bản dịch. */
+function serverText(key: unknown, params: Params = {}): string | null {
+  if (typeof key !== 'string' || !i18n.exists(`serverErrors.${key}`)) return null;
+  // Khóa động (đến từ server) nên gọi t() không kiểm tra kiểu khóa.
+  return (i18n.t as unknown as (k: string, o?: object) => string)(`serverErrors.${key}`, params);
+}
+
+/** Thông báo lỗi (theo ngôn ngữ đang chọn) từ lỗi Functions/Firebase. */
+export function errorText(e: unknown): string {
+  const err = e as { code?: string; message?: string; details?: Params & { key?: string } };
+  const translated = serverText(err?.details?.key, err?.details ?? {});
+  if (translated) return translated;
   const code = err?.code ?? '';
-  if (code === 'functions/unavailable' || code === 'unavailable') return 'Không kết nối được máy chủ, hãy thử lại';
-  if (code === 'functions/deadline-exceeded') return 'Máy chủ phản hồi chậm, hãy thử lại';
-  if (code === 'functions/unauthenticated') return 'Bạn cần đăng nhập';
-  if (code === 'PERMISSION_DENIED' || code === 'permission-denied' || /permission/i.test(err?.message ?? ''))
-    return err?.message && !/^PERMISSION_DENIED|permission_denied|Missing or insufficient/i.test(err.message)
-      ? err.message
-      : 'Bạn không có quyền truy cập';
-  if (err?.message === 'FIREBASE_NOT_CONFIGURED') return 'Chưa cấu hình Firebase cho chế độ online';
-  return err?.message || 'Đã có lỗi xảy ra';
+  if (code === 'functions/unavailable' || code === 'unavailable') return i18n.t('errors.unavailable');
+  if (code === 'functions/deadline-exceeded') return i18n.t('errors.slow');
+  if (code === 'functions/unauthenticated') return i18n.t('errors.signIn');
+  if (code === 'PERMISSION_DENIED' || code === 'permission-denied' || /permission/i.test(err?.message ?? '')) return i18n.t('errors.permission');
+  if (err?.message === 'FIREBASE_NOT_CONFIGURED') return i18n.t('errors.notConfigured');
+  return err?.message || i18n.t('common.errorGeneric');
+}
+
+/** Thông báo cho phản hồi lệnh trận đấu (đi quân, cầu hòa…) bị từ chối. */
+export function commandText(r: { code: string; message: string | null; messageKey?: string | null }): string {
+  return serverText(r.messageKey) ?? (i18n.exists(`cmd.${r.code}`) ? i18n.t(`cmd.${r.code}` as 'cmd.not_allowed') : null) ?? r.message ?? r.code;
 }

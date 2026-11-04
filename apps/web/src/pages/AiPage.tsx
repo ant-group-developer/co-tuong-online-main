@@ -1,10 +1,15 @@
-import { END_REASON_VI, Game, START_FEN, makeMove, type EndReason, type GameResult, type Side } from '@xq/engine';
-import { AI_LEVELS, AI_PROFILES, type AiLevel } from '@xq/engine/ai';
+import { Game, START_FEN, makeMove, type EndReason, type GameResult, type Side } from '@xq/engine';
+import type { AiLevel } from '@xq/engine/ai';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { AiClient } from '../ai/client';
+import { infoOf, isAiLevel, levelName, loadRecords, newGameId, nextLevel, recordResult, thinkText, type Records } from '../ai/levels';
+import { AiLevelPicker, ColorPicker, Stars, useRecordText, type ColorChoice } from '../components/AiLevelPicker';
 import { Board } from '../components/Board';
-import { SoundControl } from '../components/common';
+import { Modal, SoundControl } from '../components/common';
 import { MoveList, PlayerBar, ResultBanner } from '../components/GamePanels';
+import { fmtNumber, moveText } from '../i18n';
 import { playSound } from '../lib/sound';
 
 const SAVE_KEY = 'xq.ai.v1';
@@ -17,24 +22,29 @@ interface Saved {
   startFen: string;
   moves: string[];
   flipped: boolean;
+  gameId?: string;
+  /** Đã đổi máy giữa ván: kết quả không tính vào thành tích. */
+  switched?: boolean;
 }
 
 function loadSaved(): Saved | null {
   try {
     const v = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null') as Saved | null;
-    if (v && AI_LEVELS.includes(v.level) && Array.isArray(v.moves)) return v;
+    if (v && isAiLevel(v.level) && Array.isArray(v.moves)) return v;
   } catch {
     /* bỏ qua */
   }
   return null;
 }
 
-type ColorChoice = Side | 'random';
-
 export function AiPage() {
+  const { t } = useTranslation();
+  const recordText = useRecordText();
   const saved = useMemo(loadSaved, []);
+  const [params] = useSearchParams();
+  const qLevel = params.get('level');
   const [phase, setPhase] = useState<'setup' | 'playing'>('setup');
-  const [level, setLevel] = useState<AiLevel>(saved?.level ?? 'medium');
+  const [level, setLevel] = useState<AiLevel>(isAiLevel(qLevel) ? qLevel : (saved?.level ?? 'medium'));
   const [color, setColor] = useState<ColorChoice>('red');
   const [human, setHuman] = useState<Side>('red');
   const [flipped, setFlipped] = useState(false);
@@ -43,6 +53,10 @@ export function AiPage() {
   const [aiInfo, setAiInfo] = useState<string>('');
   const [resigned, setResigned] = useState<{ result: GameResult; reason: EndReason } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [gameId, setGameId] = useState(newGameId);
+  const [switched, setSwitched] = useState(false);
+  const [records, setRecords] = useState<Records>(loadRecords);
+  const [picker, setPicker] = useState(false);
   const gameRef = useRef<Game>(new Game());
   const verRef = useRef(0);
   const aiRef = useRef<AiClient | null>(null);
@@ -67,11 +81,15 @@ export function AiPage() {
     const g = gameRef.current;
     try {
       if (g.status.over) localStorage.removeItem(SAVE_KEY);
-      else localStorage.setItem(SAVE_KEY, JSON.stringify({ level, human, startFen: g.startFen, moves: g.movesIccs(), flipped } satisfies Saved));
+      else
+        localStorage.setItem(
+          SAVE_KEY,
+          JSON.stringify({ level, human, startFen: g.startFen, moves: g.movesIccs(), flipped, gameId, switched } satisfies Saved),
+        );
     } catch {
       /* bỏ qua */
     }
-  }, [level, human, flipped]);
+  }, [level, human, flipped, gameId, switched]);
 
   const soundFor = (g: Game) => {
     const last = g.history[g.history.length - 1];
@@ -81,20 +99,37 @@ export function AiPage() {
     else playSound('move');
   };
 
+  /** Bắt đầu ván mới với máy `lv`. */
   const start = (lv: AiLevel, choice: ColorChoice) => {
     aiRef.current?.cancel();
     const side: Side = choice === 'random' ? (Math.random() < 0.5 ? 'red' : 'black') : choice;
     gameRef.current = new Game(START_FEN);
     setLevel(lv);
+    setColor(choice);
     setHuman(side);
     setFlipped(side === 'black');
     setResigned(null);
     setAiInfo('');
     setError(null);
     setThinking(false);
+    setGameId(newGameId());
+    setSwitched(false);
+    setPicker(false);
     setPhase('playing');
     bump();
     window.scrollTo({ top: 0 });
+  };
+
+  /** Đổi máy giữa ván, giữ nguyên thế cờ. Ván này không tính vào thành tích. */
+  const switchLevelKeep = (lv: AiLevel) => {
+    setPicker(false);
+    if (lv === level) return;
+    aiRef.current?.cancel();
+    setThinking(false);
+    setLevel(lv);
+    setSwitched(true);
+    setAiInfo('');
+    bump(); // đổi positionVersion: kết quả tìm kiếm của máy cũ (nếu còn) bị bỏ
   };
 
   const resume = (s: Saved) => {
@@ -106,11 +141,13 @@ export function AiPage() {
       setHuman(s.human);
       setFlipped(s.flipped);
       setResigned(null);
+      setGameId(s.gameId ?? newGameId());
+      setSwitched(!!s.switched);
       setPhase('playing');
       bump();
     } catch {
       localStorage.removeItem(SAVE_KEY);
-      setError('Không khôi phục được ván đã lưu');
+      setError(t('ai.restoreFailed'));
     }
   };
 
@@ -130,20 +167,20 @@ export function AiPage() {
         if (!r || !alive || r.positionVersion !== verRef.current || !r.move) return;
         const wait = MIN_DISPLAY_MS - (performance.now() - started);
         if (wait > 0) await new Promise((res) => setTimeout(res, wait));
-        if (!alive || r.positionVersion !== verRef.current) return; // vị trí đã đổi (undo/restart/đổi level)
+        if (!alive || r.positionVersion !== verRef.current) return; // vị trí đã đổi (undo/restart/đổi máy)
         const cur = gameRef.current;
         if (cur.status.over || cur.sideToMove !== aiSide) return;
         try {
           cur.play(r.move);
         } catch {
-          setError('Máy trả về nước không hợp lệ – đã bỏ qua');
+          setError(t('ai.badAiMove'));
           return;
         }
-        setAiInfo(`Độ sâu ${r.depth} · ${r.nodes.toLocaleString('vi-VN')} nút · ${r.timeMs} ms`);
+        setAiInfo(t('ai.searchInfo', { depth: r.depth, nodes: fmtNumber(r.nodes), ms: r.timeMs }));
         soundFor(cur);
         bump();
       })
-      .catch((e) => setError(`AI lỗi: ${String((e as Error).message)}`))
+      .catch((e) => setError(t('ai.aiError', { message: String((e as Error).message) })))
       .finally(() => {
         if (alive) setThinking(false);
       });
@@ -158,6 +195,14 @@ export function AiPage() {
   useEffect(() => {
     if (phase === 'playing') save();
   }, [ver, phase, save]);
+
+  // Ghi thành tích khi ván kết thúc (một lần cho mỗi ván, bỏ qua ván đã đổi máy giữa chừng hoặc chưa đi nước nào)
+  useEffect(() => {
+    if (phase !== 'playing' || !result || switched || game.history.length < 2) return;
+    const outcome = result.result === 'draw' ? 'd' : result.result === human ? 'w' : 'l';
+    setRecords(recordResult(gameId, level, outcome));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, result?.result, result?.reason, gameId]);
 
   const humanTurn = phase === 'playing' && !over && game.sideToMove === human;
 
@@ -200,16 +245,16 @@ export function AiPage() {
 
   if (phase === 'setup') {
     return (
-      <div className="page narrow">
-        <h1>Chơi với máy</h1>
+      <div className="page narrow-wide stack">
+        <h1>{t('ai.title')}</h1>
         {saved && saved.moves.length > 0 && (
-          <div className="card highlight">
+          <div className="card highlight stack">
             <p>
-              Bạn có ván đang dở với mức <strong>{AI_PROFILES[saved.level].label}</strong> ({saved.moves.length} nửa nước).
+              <Trans i18nKey="ai.unfinished" values={{ level: levelName(saved.level), count: saved.moves.length }} components={{ b: <strong /> }} />
             </p>
             <div className="row">
               <button type="button" className="btn primary" onClick={() => resume(saved)}>
-                Tiếp tục ván
+                {t('ai.resume')}
               </button>
               <button
                 type="button"
@@ -219,60 +264,58 @@ export function AiPage() {
                   window.location.reload();
                 }}
               >
-                Bỏ ván
+                {t('ai.discard')}
               </button>
             </div>
           </div>
         )}
         {error && <p className="error">{error}</p>}
-        <fieldset className="card">
-          <legend>Mức độ</legend>
-          <div className="level-grid" role="radiogroup" aria-label="Mức độ">
-            {AI_LEVELS.map((lv) => (
-              <label key={lv} className={`level-option${level === lv ? ' checked' : ''}`}>
-                <input type="radio" name="level" value={lv} checked={level === lv} onChange={() => setLevel(lv)} />
-                <strong>{AI_PROFILES[lv].label}</strong>
-                <small>{AI_PROFILES[lv].description}</small>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <fieldset className="card">
-          <legend>Bạn cầm quân</legend>
-          <div className="row" role="radiogroup" aria-label="Màu quân">
-            {(
-              [
-                ['red', 'Đỏ (đi trước)'],
-                ['black', 'Đen'],
-                ['random', 'Ngẫu nhiên'],
-              ] as const
-            ).map(([v, label]) => (
-              <label key={v} className={`chip${color === v ? ' checked' : ''}`}>
-                <input type="radio" name="color" value={v} checked={color === v} onChange={() => setColor(v)} />
-                {label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <button type="button" className="btn primary big" onClick={() => start(level, color)} data-testid="ai-start">
-          Bắt đầu
-        </button>
+        <section className="stack">
+          <h2 className="h3">{t('ai.step1')}</h2>
+          <AiLevelPicker value={level} onChange={setLevel} records={records} />
+        </section>
+        <section className="card stack">
+          <h2 className="h3">{t('ai.step2')}</h2>
+          <ColorPicker value={color} onChange={setColor} />
+        </section>
+        <div className="row">
+          <button type="button" className="btn primary big" onClick={() => start(level, color)} data-testid="ai-start">
+            {t('ai.startWith', { level: levelName(level) })}
+          </button>
+        </div>
       </div>
     );
   }
 
   const top: Side = flipped ? 'red' : 'black';
   const bottom: Side = flipped ? 'black' : 'red';
-  const nameOf = (s: Side) => (s === human ? 'Bạn' : `Máy · ${AI_PROFILES[level].label}`);
+  const info = infoOf(level);
+  const nameOf = (s: Side) => (s === human ? t('ai.you') : t('ai.machine', { level: levelName(level) }));
   let resultText = '';
   if (result) {
-    resultText = result.result === 'draw' ? 'Hòa' : result.result === human ? 'Bạn thắng!' : 'Bạn thua';
+    resultText = result.result === 'draw' ? t('ai.draw') : result.result === human ? t('ai.win') : t('ai.loss');
   }
+  const won = !!result && result.result === human;
+  const lost = !!result && result.result !== 'draw' && result.result !== human;
+  const harder = nextLevel(level, 1);
+  const easier = nextLevel(level, -1);
+  const inProgress = !over && game.history.length > 0;
 
   return (
     <div className="game-layout">
+      {picker && (
+        <ChangeAiModal
+          current={level}
+          color={color}
+          records={records}
+          inProgress={inProgress}
+          onClose={() => setPicker(false)}
+          onKeep={switchLevelKeep}
+          onNew={start}
+        />
+      )}
       <section className="board-col">
-        <PlayerBar name={nameOf(top)} side={top} active={!over && game.sideToMove === top} note={top === aiSide && thinking ? 'đang nghĩ…' : undefined} />
+        <PlayerBar name={nameOf(top)} side={top} active={!over && game.sideToMove === top} note={top === aiSide && thinking ? t('panel.thinking') : undefined} />
         <Board
           board={board}
           flipped={flipped}
@@ -282,42 +325,78 @@ export function AiPage() {
           lastMove={lastMove}
           checkSq={checkSq}
           disabled={!humanTurn}
-          ariaLabel="Bàn cờ – chơi với máy"
+          ariaLabel={t('board.vsAi')}
         />
-        <PlayerBar name={nameOf(bottom)} side={bottom} active={!over && game.sideToMove === bottom} note={bottom === aiSide && thinking ? 'đang nghĩ…' : undefined} />
+        <PlayerBar name={nameOf(bottom)} side={bottom} active={!over && game.sideToMove === bottom} note={bottom === aiSide && thinking ? t('panel.thinking') : undefined} />
       </section>
       <aside className="side-col">
+        <div className="card opponent-card" data-testid="opponent-card">
+          <div className="opponent-main">
+            <span className="opponent-avatar" aria-hidden="true">
+              {info.stars}
+            </span>
+            <div className="stack-tight">
+              <span className="muted small">{t('ai.opponent')}</span>
+              <strong data-testid="opponent-name">{t('ai.machine', { level: levelName(level) })}</strong>
+              <Stars n={info.stars} />
+            </div>
+          </div>
+          <p className="muted small">{t(`levels.${level}.play`)}</p>
+          <p className="muted small">
+            {thinkText(level)} · {recordText(records[level])}
+          </p>
+          {switched && <p className="muted small">{t('ai.switchedNote')}</p>}
+          <div className="row">
+            <button type="button" className="btn" onClick={() => setPicker(true)} data-testid="change-ai">
+              {t('ai.changeAi')}
+            </button>
+          </div>
+        </div>
         <div className="card">
           <div className="row between">
-            <strong>{AI_PROFILES[level].label}</strong>
+            <strong>{t('ai.yourGame')}</strong>
             <span className="muted small" aria-live="polite">
-              {over ? 'Ván đã kết thúc' : thinking ? 'Máy đang nghĩ…' : humanTurn ? 'Đến lượt bạn' : ''}
+              {over ? t('ai.over') : thinking ? t('ai.thinking') : humanTurn ? t('ai.yourTurn') : ''}
             </span>
           </div>
-          {status.inCheck && !over && <p className="check-alert">Chiếu tướng!</p>}
+          {status.inCheck && !over && <p className="check-alert">{t('ai.check')}</p>}
           {aiInfo && <p className="muted small">{aiInfo}</p>}
           {error && <p className="error">{error}</p>}
           {result && (
-            <ResultBanner text={resultText} sub={END_REASON_VI[result.reason]}>
-              <button type="button" className="btn primary" onClick={() => start(level, color)}>
-                Ván mới
+            <ResultBanner text={resultText} sub={t(`endReason.${result.reason}`)}>
+              {won && harder && (
+                <button type="button" className="btn primary" onClick={() => start(harder, color)} data-testid="try-harder">
+                  {t('ai.tryHarder', { level: levelName(harder) })}
+                </button>
+              )}
+              {lost && easier && (
+                <button type="button" className="btn primary" onClick={() => start(easier, color)} data-testid="try-easier">
+                  {t('ai.tryEasier', { level: levelName(easier) })}
+                </button>
+              )}
+              <button type="button" className={`btn${(won && harder) || (lost && easier) ? '' : ' primary'}`} onClick={() => start(level, color)}>
+                {t('ai.sameAgain')}
+              </button>
+              <button type="button" className="btn" onClick={() => setPicker(true)} data-testid="result-change-ai">
+                {t('ai.pickOther')}
               </button>
             </ResultBanner>
           )}
           <div className="actions">
             <button type="button" className="btn" onClick={() => start(level, color)}>
-              Ván mới
+              {t('common.newGame')}
             </button>
             <button type="button" className="btn" onClick={undo} disabled={game.history.length === 0}>
-              Đi lại
+              {t('common.undo')}
             </button>
             <button type="button" className="btn" onClick={() => setFlipped((f) => !f)}>
-              Lật bàn
+              {t('common.flipBoard')}
             </button>
             <button
               type="button"
               className="btn danger"
               disabled={over}
+              data-testid="ai-resign"
               onClick={() => {
                 aiRef.current?.cancel();
                 setResigned({ result: aiSide, reason: 'resign' });
@@ -325,27 +404,68 @@ export function AiPage() {
                 localStorage.removeItem(SAVE_KEY);
               }}
             >
-              Đầu hàng
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => {
-                aiRef.current?.cancel();
-                setPhase('setup');
-              }}
-            >
-              Đổi mức / màu
+              {t('common.resign')}
             </button>
           </div>
           <SoundControl />
         </div>
         <div className="card grow">
-          <h2 className="h3">Nước đi</h2>
-          <MoveList moves={game.history.map((h) => h.vn)} />
+          <h2 className="h3">{t('panel.moves')}</h2>
+          <MoveList moves={game.history.map(moveText)} />
         </div>
       </aside>
     </div>
   );
 }
 
+/** Hộp chọn máy khác: đổi ngay (giữ thế cờ) hoặc bắt đầu ván mới. */
+function ChangeAiModal({
+  current,
+  color,
+  records,
+  inProgress,
+  onClose,
+  onKeep,
+  onNew,
+}: {
+  current: AiLevel;
+  color: ColorChoice;
+  records: Records;
+  inProgress: boolean;
+  onClose: () => void;
+  onKeep: (lv: AiLevel) => void;
+  onNew: (lv: AiLevel, c: ColorChoice) => void;
+}) {
+  const [lv, setLv] = useState<AiLevel>(current);
+  const { t } = useTranslation();
+  const [c, setC] = useState<ColorChoice>(color);
+  const name = levelName(lv);
+  return (
+    <Modal title={t('ai.modalTitle')} onClose={onClose} wide>
+      <AiLevelPicker value={lv} onChange={setLv} records={records} current={current} name="change-level" />
+      {inProgress && (
+        <div className="choice-box stack-tight">
+          <strong>{t('ai.keepTitle')}</strong>
+          <span className="muted small">{t('ai.keepNote', { level: name })}</span>
+          <div className="row">
+            <button type="button" className="btn primary" disabled={lv === current} onClick={() => onKeep(lv)} data-testid="switch-keep">
+              {t('ai.keepBtn', { level: name })}
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="choice-box stack-tight">
+        <strong>{t('ai.newTitle')}</strong>
+        <ColorPicker value={c} onChange={setC} name="change-color" />
+        <div className="row">
+          <button type="button" className={`btn${inProgress ? '' : ' primary'}`} onClick={() => onNew(lv, c)} data-testid="switch-new">
+            {t('ai.newBtn', { level: name })}
+          </button>
+          <button type="button" className="btn" onClick={onClose}>
+            {t('common.close')}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

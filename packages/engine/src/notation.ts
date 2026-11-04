@@ -3,6 +3,7 @@
  *  - ICCS (máy đọc, dùng cho lưu trữ/giao thức): "h2e2" – file a..i = col 0..8, rank 0..9 = 9 - row.
  *  - Ký hiệu Việt (hiển thị): "P2-5" (pháo 2 bình 5), "M8.7" (mã 8 tiến 7), "X1/2" (xe 1 thoái 2).
  *    Cột tính từ phải sang trái theo góc nhìn của bên đi (1..9). Tiến ".", thoái "/", bình "-".
+ *  - Ký hiệu quốc tế WXF (giao diện tiếng Anh): "C2=5", "H8+7", "R1-2".
  */
 import type { Position } from './position.js';
 import { makeMove } from './position.js';
@@ -61,8 +62,32 @@ function fileNumber(sign: number, col: number): number {
   return sign > 0 ? 9 - col : col + 1;
 }
 
-/** Ký hiệu Việt cho nước `m` tại vị trí `pos` (trước khi đi). */
-export function moveToVietnamese(pos: Position, m: Move): string {
+interface NotationStyle {
+  letters: Record<number, string>;
+  /** Hai quân cùng loại trên một cột: ký hiệu quân trước / sau. */
+  front: string;
+  rear: string;
+  /** true: dấu trước/sau đặt SAU chữ quân (Việt: "Xt"); false: đặt TRƯỚC (WXF: "+R"). */
+  tandemAfterLetter: boolean;
+  advance: string;
+  retreat: string;
+  traverse: string;
+}
+
+const VN_STYLE: NotationStyle = { letters: VN_LETTER, front: 't', rear: 's', tandemAfterLetter: true, advance: '.', retreat: '/', traverse: '-' };
+
+/** Ký hiệu quốc tế WXF: K/A/E/H/R/C/P, tiến "+", thoái "-", bình "=". Ví dụ "C2=5", "H8+7", "+R-1". */
+const WXF_STYLE: NotationStyle = {
+  letters: { [KING]: "K", [ADVISOR]: "A", [ELEPHANT]: "E", [HORSE]: "H", [ROOK]: "R", [CANNON]: "C", [PAWN]: "P" },
+  front: "+",
+  rear: "-",
+  tandemAfterLetter: false,
+  advance: "+",
+  retreat: "-",
+  traverse: "=",
+};
+
+function moveNotation(pos: Position, m: Move, st: NotationStyle): string {
   const from = m & 127;
   const to = m >> 7;
   const p = pos.board[from];
@@ -75,25 +100,36 @@ export function moveToVietnamese(pos: Position, m: Move): string {
   const tr = rowOf(to);
 
   // Phân biệt trước/sau khi có 2 quân cùng loại trên cùng cột.
-  let prefix = VN_LETTER[t] + fileNumber(sign, fc);
+  let prefix = st.letters[t] + fileNumber(sign, fc);
   const sameFile: number[] = [];
   for (let r = 0; r < 10; r++) if (pos.board[sqOf(r, fc)] === p) sameFile.push(r);
   if (sameFile.length === 2 && t !== KING && t !== ADVISOR && t !== ELEPHANT) {
     // "trước" là quân gần phía đối phương hơn.
     const front = sign > 0 ? Math.min(...sameFile) : Math.max(...sameFile);
-    prefix = VN_LETTER[t] + (fr === front ? 't' : 's');
+    const mark = fr === front ? st.front : st.rear;
+    prefix = st.tandemAfterLetter ? st.letters[t] + mark : mark + st.letters[t];
   }
 
   const forwardRows = sign > 0 ? fr - tr : tr - fr; // > 0 là tiến
   let action: string;
   let target: number;
   if (tr === fr) {
-    action = '-';
+    action = st.traverse;
     target = fileNumber(sign, tc);
   } else {
-    action = forwardRows > 0 ? '.' : '/';
+    action = forwardRows > 0 ? st.advance : st.retreat;
     const straight = t === ROOK || t === CANNON || t === PAWN || t === KING;
     target = straight ? Math.abs(forwardRows) : fileNumber(sign, tc);
   }
   return `${prefix}${action}${target}`;
+}
+
+/** Ký hiệu Việt cho nước `m` tại vị trí `pos` (trước khi đi). */
+export function moveToVietnamese(pos: Position, m: Move): string {
+  return moveNotation(pos, m, VN_STYLE);
+}
+
+/** Ký hiệu quốc tế WXF cho nước `m` tại vị trí `pos` (trước khi đi). */
+export function moveToWxf(pos: Position, m: Move): string {
+  return moveNotation(pos, m, WXF_STYLE);
 }

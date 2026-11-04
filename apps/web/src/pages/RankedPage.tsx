@@ -3,14 +3,16 @@
  */
 import { onValue, ref } from 'firebase/database';
 import { useEffect, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { NotConfigured, Spinner, useNow } from '../components/common';
-import { alreadyInRoomOf, api, errorVi, TC_OPTIONS, type Tc } from '../lib/api';
+import { alreadyInRoomOf, api, errorText, tcLabel, TC_OPTIONS, type Tc } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { fb } from '../lib/firebase';
 import { useMyActiveRoom } from '../lib/myroom';
 
 export function RankedPage() {
+  const { t } = useTranslation();
   const auth = useAuth();
   const nav = useNavigate();
   const [tc, setTc] = useState<Tc>('5+0');
@@ -56,16 +58,16 @@ export function RankedPage() {
         nav(`/room/${r.roomId}`);
         return;
       }
-      if (r.status === 'busy') setMsg('Bạn đang có một trận xếp hạng chưa kết thúc.');
-      else if (r.status === 'settling') setMsg('Đang cập nhật kết quả trận trước, sẽ tự thử lại…');
+      if (r.status === 'busy') setMsg(t('ranked.busy'));
+      else if (r.status === 'settling') setMsg(t('ranked.settling'));
       else setMsg(null);
     } catch (e) {
       if (alreadyInRoomOf(e)) {
         stop();
-        setMsg(errorVi(e));
+        setMsg(errorText(e));
         return;
       }
-      setMsg(errorVi(e));
+      setMsg(errorText(e));
     }
     if (active.current) timer.current = window.setTimeout(tick, 4000);
   };
@@ -84,39 +86,38 @@ export function RankedPage() {
       const r = await api.mmCancel();
       if (r.status === 'matched' && r.roomId) nav(`/room/${r.roomId}`); // đã ghép xong trước khi hủy
     } catch (e) {
-      setMsg(errorVi(e));
+      setMsg(errorText(e));
     }
   };
 
   if (!auth.configured) return <NotConfigured />;
   if (!auth.ready) return <Spinner />;
-  if (!auth.user) return <Spinner label="Đang tạo tài khoản khách…" />;
+  if (!auth.user) return <Spinner label={t('ranked.creatingGuest')} />;
 
   const waited = since ? Math.floor((now - since) / 1000) : 0;
   return (
     <div className="page narrow stack">
-      <h1>Đấu xếp hạng</h1>
+      <h1>{t('ranked.title')}</h1>
       <p className="muted">
-        Khách cũng đấu được: rating gắn với ID của bạn (<code>{auth.code}</code>). Hệ thống tự ghép đối thủ có rating gần bạn; khoảng rating mở rộng dần theo thời gian chờ. Muốn chơi với người quen? Dùng{' '}
-        <Link to="/online">phòng chơi với bạn</Link> (không tính điểm).
+        <Trans i18nKey="ranked.intro" values={{ code: auth.code }} components={{ code: <code />, link: <Link to="/online" /> }} />
       </p>
       {inFriendly && myRoom && (
         <div className="banner" data-testid="ranked-blocked">
-          Bạn đang ở phòng chơi với bạn <strong>{myRoom.roomId}</strong>. Hãy <Link to={`/room/${myRoom.roomId}`}>quay lại phòng</Link> và rời phòng trước khi tìm trận xếp hạng.
+          <Trans i18nKey="ranked.blocked" values={{ roomId: myRoom.roomId }} components={{ b: <strong />, link: <Link to={`/room/${myRoom.roomId}`} /> }} />
         </div>
       )}
       {rating !== null && (
         <p>
-          Rating hiện tại: <strong data-testid="my-rating">{rating}</strong>
+          <Trans i18nKey="ranked.myRating" values={{ rating }} components={{ b: <strong data-testid="my-rating" /> }} />
         </p>
       )}
       <fieldset className="card" disabled={searching}>
-        <legend>Thời gian</legend>
+        <legend>{t('ranked.time')}</legend>
         <div className="row" role="radiogroup">
-          {TC_OPTIONS.filter((t) => t.ranked).map((t) => (
-            <label key={t.id} className={`chip${tc === t.id ? ' checked' : ''}`}>
-              <input type="radio" name="tc" value={t.id} checked={tc === t.id} onChange={() => setTc(t.id)} />
-              {t.label}
+          {TC_OPTIONS.filter((o) => o.ranked).map((o) => (
+            <label key={o.id} className={`chip${tc === o.id ? ' checked' : ''}`}>
+              <input type="radio" name="tc" value={o.id} checked={tc === o.id} onChange={() => setTc(o.id)} />
+              {tcLabel(o.id)}
             </label>
           ))}
         </div>
@@ -124,18 +125,18 @@ export function RankedPage() {
       {searching ? (
         <div className="card highlight stack" role="status" aria-live="polite">
           <p className="searching">
-            <span className="spinner" aria-hidden="true" /> Đang tìm đối thủ… {waited}s
+            <span className="spinner" aria-hidden="true" /> {t('ranked.searching', { seconds: waited })}
           </p>
           <div className="row">
             <button type="button" className="btn" onClick={cancel} data-testid="mm-cancel">
-              Hủy tìm
+              {t('ranked.cancel')}
             </button>
           </div>
         </div>
       ) : (
         <div className="row">
           <button type="button" className="btn primary big" onClick={startSearch} disabled={inFriendly} data-testid="mm-start">
-            Tìm trận
+            {t('ranked.find')}
           </button>
         </div>
       )}

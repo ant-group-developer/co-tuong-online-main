@@ -49,6 +49,15 @@ Một số trình duyệt chặn cookie bên thứ ba (Safari, Chrome ở chế 
 Chơi với máy và chơi bằng tài khoản khách không bị ảnh hưởng.
 Muốn giới hạn lại chỉ vài domain: đổi `frame-ancestors *` thành `frame-ancestors https://domain-cua-ban.com`.
 
+## Đa ngôn ngữ
+
+Giao diện có **Tiếng Việt** và **English** (nút VI/EN trên thanh menu; lần đầu tự chọn theo ngôn ngữ trình duyệt, lựa chọn được lưu).
+- Bản dịch: `apps/web/src/i18n/vi.ts` (bản gốc) và `en.ts` – TypeScript báo lỗi nếu thiếu khóa. Thêm ngôn ngữ: tạo `xx.ts` cùng kiểu `Messages`, khai báo trong `i18n/index.ts`.
+- Lỗi từ server gửi kèm **mã** (`functions/src/messages.ts`), web tự dịch theo ngôn ngữ đang chọn.
+- Ký hiệu nước đi: tiếng Việt `P2-5, M8.7`; tiếng Anh dùng ký hiệu quốc tế WXF `C2=5, H8+7`.
+- `tests/unit/i18n.test.ts` chặn việc viết thẳng chữ tiếng Việt vào code giao diện và kiểm tra hai bản dịch khớp nhau.
+- Tên web lấy từ `VITE_APP_NAME` trong `.env` nếu có (cố định mọi ngôn ngữ); bỏ dòng đó thì tên đổi theo ngôn ngữ (Cờ Tướng Online / Xiangqi Online).
+
 ## Tài liệu
 
 - [Hướng dẫn cấu hình Firebase & deploy](docs/HUONG-DAN-CAU-HINH-FIREBASE.md)

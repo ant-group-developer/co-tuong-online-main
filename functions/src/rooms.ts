@@ -1,7 +1,7 @@
 /**
  * Callable cho phòng bạn bè + lời mời phòng riêng tư.
  */
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { onCall } from 'firebase-functions/v2/https';
 import { LIMITS, REGION, TIME_CONTROLS } from './config.js';
 import {
   joinAsPlayer,
@@ -22,7 +22,7 @@ import {
   ENFORCE_APP_CHECK,
   displayNameOf,
   hashToken,
-  httpsErrorFor,
+  httpsError, httpsErrorFor,
   newInviteToken,
   randomId,
   requireAuth,
@@ -37,29 +37,29 @@ const callOpts = { region: REGION, enforceAppCheck: ENFORCE_APP_CHECK, cors: tru
 const ROOM_ID_RE = /^[a-z0-9]{6,24}$/;
 
 function str(v: unknown, field: string): string {
-  if (typeof v !== 'string') throw new HttpsError('invalid-argument', `Thiếu ${field}`);
+  if (typeof v !== 'string') throw httpsError('invalid-argument', `Thiếu ${field}`, { key: 'missing_field', field });
   return v;
 }
 
 function roomIdOf(data: unknown): string {
   const id = str((data as { roomId?: unknown })?.roomId, 'roomId');
-  if (!ROOM_ID_RE.test(id)) throw new HttpsError('invalid-argument', 'Mã phòng không hợp lệ');
+  if (!ROOM_ID_RE.test(id)) throw httpsError('invalid-argument', 'Mã phòng không hợp lệ');
   return id;
 }
 
 function parseVisibility(v: unknown): Visibility {
-  if (v !== 'public' && v !== 'private') throw new HttpsError('invalid-argument', 'visibility phải là public hoặc private');
+  if (v !== 'public' && v !== 'private') throw httpsError('invalid-argument', 'visibility phải là public hoặc private');
   return v;
 }
 
 function parseColor(v: unknown): OwnerColor {
   if (v === undefined) return 'random';
-  if (v !== 'red' && v !== 'black' && v !== 'random') throw new HttpsError('invalid-argument', 'Màu không hợp lệ');
+  if (v !== 'red' && v !== 'black' && v !== 'random') throw httpsError('invalid-argument', 'Màu không hợp lệ');
   return v;
 }
 
 function parseTc(v: unknown): string {
-  if (typeof v !== 'string' || !TIME_CONTROLS[v]) throw new HttpsError('invalid-argument', 'Thời gian không hợp lệ');
+  if (typeof v !== 'string' || !TIME_CONTROLS[v]) throw httpsError('invalid-argument', 'Thời gian không hợp lệ');
   return v;
 }
 
@@ -128,7 +128,7 @@ export const createRoom = onCall(callOpts, async (req) => {
       return { roomId };
     }
   }
-  throw new HttpsError('internal', 'Không tạo được phòng, hãy thử lại');
+  throw httpsError('internal', 'Không tạo được phòng, hãy thử lại');
 });
 
 export const joinRoom = onCall(callOpts, async (req) => {

@@ -8,6 +8,7 @@ export {
   moveToIccs,
   iccsToMove,
   moveToVietnamese,
+  moveToWxf,
   PIECE_NAME_VI,
 } from './notation.js';
 export {
