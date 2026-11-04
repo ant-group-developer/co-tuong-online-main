@@ -171,3 +171,46 @@ test('khách: tự có ID + đổi tên; hồ sơ/đăng nhập là 2 tab; nối
   await expect(page.getByTestId('sign-out')).toBeVisible();
   await ctx.close();
 });
+
+test('chơi với máy: chọn mức qua link, đổi máy giữa ván giữ thế cờ, thua thì gợi ý mức dễ hơn, chọn máy khác cho ván mới', async ({ page }) => {
+  await page.goto('/ai?level=hard');
+  await expect(page.locator('input[value="hard"]')).toBeChecked();
+  await page.locator('input[value="super_easy"]').check();
+  await page.getByTestId('ai-start').click();
+  await expect(page.getByTestId('opponent-name')).toContainText('Siêu dễ');
+  await move(page, 'h2', 'e2');
+  await expect(page.locator('.move-list .mv.black')).toHaveCount(1, { timeout: 15_000 });
+
+  await page.getByTestId('change-ai').click();
+  await page.locator('.modal input[value="easy"]').check();
+  await page.getByTestId('switch-keep').click();
+  await expect(page.getByTestId('opponent-name')).toContainText('Máy · Dễ');
+  await expect(page.locator('.move-list .mv')).toHaveCount(2); // thế cờ giữ nguyên
+
+  await page.getByTestId('ai-resign').click();
+  await expect(page.getByTestId('try-easier')).toContainText('Siêu dễ');
+  await page.getByTestId('result-change-ai').click();
+  await expect(page.getByTestId('switch-keep')).toHaveCount(0); // ván đã xong: chỉ còn "Ván mới"
+  await page.locator('.modal input[value="medium"]').check();
+  await page.getByTestId('switch-new').click();
+  await expect(page.getByTestId('opponent-name')).toContainText('Trung bình');
+  await expect(page.locator('.move-list .mv')).toHaveCount(0);
+});
+
+test('đa ngôn ngữ: đổi EN/VI, nhớ lựa chọn, ký hiệu nước đi đổi theo ngôn ngữ', async ({ page }) => {
+  await page.goto('/ai');
+  await expect(page.getByTestId('ai-start')).toContainText('Bắt đầu với máy');
+  await page.getByTestId('lang-en').click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.getByTestId('ai-start')).toContainText('Start against');
+  await page.locator('input[value="super_easy"]').check();
+  await page.getByTestId('ai-start').click();
+  await move(page, 'h2', 'e2');
+  await expect(page.locator('.move-list .mv.red').first()).toHaveText('C2=5');
+  await page.getByTestId('lang-vi').click();
+  await expect(page.locator('.move-list .mv.red').first()).toHaveText('P2-5');
+  await page.getByTestId('lang-en').click();
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.getByRole('link', { name: 'Play computer' })).toBeVisible();
+});

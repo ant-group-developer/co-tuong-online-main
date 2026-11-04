@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
+import './i18n';
 import { ErrorState } from './components/common';
 import { Layout } from './components/Layout';
 import { AuthProvider } from './lib/auth';
@@ -23,6 +25,11 @@ function LoginRedirect() {
   return <Navigate to={`/profile?tab=login${next ? `&next=${encodeURIComponent(next)}` : ''}`} replace />;
 }
 
+function NotFound() {
+  const { t } = useTranslation();
+  return <ErrorState title={t('common.notFoundPage')} />;
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
@@ -41,7 +48,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="replay/:matchId" element={<ReplayPage />} />
             <Route path="login" element={<LoginRedirect />} />
             <Route path="rules" element={<RulesPage />} />
-            <Route path="*" element={<ErrorState title="Không tìm thấy trang" />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </BrowserRouter>

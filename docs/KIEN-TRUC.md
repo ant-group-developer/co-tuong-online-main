@@ -152,6 +152,10 @@ Tỉ lệ thắng = thắng ÷ trận rated (hòa không tính thắng).
 Hạng hiển thị trên bảng = vị trí trong thứ tự (rating giảm dần, uid tăng dần), các trang được tải tuần tự từ đầu bảng.
 "Hạng của bạn" = 1 + số người có rating cao hơn (count aggregation).
 
+**Đa ngôn ngữ** (i18next): toàn bộ chữ giao diện nằm trong `apps/web/src/i18n/{vi,en}.ts`. Server không dịch: mỗi lỗi có `details.key`
+(callable) hoặc `messageKey` (phản hồi lệnh trận) lấy từ danh mục `functions/src/messages.ts`; web tra khóa đó trong `serverErrors.*`.
+Tên khách mặc định tạo theo ngôn ngữ lúc tạo ("Khách ABC123" / "Guest ABC123") và là dữ liệu của người chơi (không tự dịch lại).
+
 ## 7. Kiểm thử (kết quả lần chạy gần nhất)
 
 | Bộ | Lệnh | Kết quả |

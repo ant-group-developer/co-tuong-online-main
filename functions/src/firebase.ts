@@ -3,6 +3,7 @@ import { getDatabase, type Reference } from 'firebase-admin/database';
 import { getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, type CallableRequest } from 'firebase-functions/v2/https';
 import { randomBytes, createHash } from 'node:crypto';
+import { keyOfMessage } from './messages.js';
 
 if (getApps().length === 0) initializeApp();
 
@@ -22,7 +23,7 @@ export interface AuthedUser {
 }
 
 export function requireAuth(req: CallableRequest<unknown>): AuthedUser {
-  if (!req.auth) throw new HttpsError('unauthenticated', 'Bạn cần đăng nhập');
+  if (!req.auth) throw httpsError('unauthenticated', 'Bạn cần đăng nhập');
   const token = req.auth.token as Record<string, unknown> & { firebase?: { sign_in_provider?: string } };
   const anonymous = token.firebase?.sign_in_provider === 'anonymous';
   const raw = (typeof token.name === 'string' && token.name) || (typeof token.email === 'string' && token.email.split('@')[0]) || '';
@@ -97,18 +98,39 @@ export async function runTx<T, R extends { commit: boolean }>(
   return { result: last as unknown as R, committed: res.committed, value: res.snapshot.val() as T | null };
 }
 
+type FnCode = ConstructorParameters<typeof HttpsError>[0];
+
+/**
+ * Lỗi trả cho client, luôn kèm `details.key` (khóa thông báo để giao diện dịch) nếu câu có trong danh mục.
+ * `extra` thêm tham số cho bản dịch (ví dụ roomId).
+ */
+export function httpsError(code: FnCode, message: string, extra: Record<string, unknown> = {}): HttpsError {
+  const key = keyOfMessage(message);
+  return new HttpsError(code, message, { ...(key ? { key } : {}), ...extra });
+}
+
+const DEFAULT_KEY: Record<string, string> = {
+  not_found: 'not_found',
+  permission_denied: 'no_permission',
+  not_player: 'no_permission',
+  bad_request: 'bad_request',
+  rate_limited: 'too_fast',
+};
+
 export function httpsErrorFor(code: string, message?: string): HttpsError {
+  const key = keyOfMessage(message) ?? DEFAULT_KEY[code] ?? null;
+  const details = { code, ...(key ? { key } : {}) };
   switch (code) {
     case 'not_found':
-      return new HttpsError('not-found', message ?? 'Không tìm thấy');
+      return new HttpsError('not-found', message ?? 'Không tìm thấy', details);
     case 'permission_denied':
     case 'not_player':
-      return new HttpsError('permission-denied', message ?? 'Không có quyền');
+      return new HttpsError('permission-denied', message ?? 'Không có quyền', details);
     case 'bad_request':
-      return new HttpsError('invalid-argument', message ?? 'Yêu cầu không hợp lệ');
+      return new HttpsError('invalid-argument', message ?? 'Yêu cầu không hợp lệ', details);
     case 'rate_limited':
-      return new HttpsError('resource-exhausted', message ?? 'Thao tác quá nhanh, hãy thử lại sau');
+      return new HttpsError('resource-exhausted', message ?? 'Thao tác quá nhanh, hãy thử lại sau', details);
     default:
-      return new HttpsError('failed-precondition', message ?? code, { code });
+      return new HttpsError('failed-precondition', message ?? code, details);
   }
 }

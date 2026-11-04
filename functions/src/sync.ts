@@ -58,6 +58,7 @@ export async function assertNotInOtherRoom(uid: string, opts: { exceptRoomId?: s
   if (opts.onlyMode && room.meta.mode !== opts.onlyMode) return;
   throw new HttpsError('failed-precondition', `Bạn đang ở phòng ${cur.roomId}. Hãy quay lại hoặc rời phòng đó trước.`, {
     code: 'already_in_room',
+    key: 'already_in_room',
     roomId: cur.roomId,
   });
 }

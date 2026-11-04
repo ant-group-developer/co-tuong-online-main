@@ -2,7 +2,7 @@
  * Lệnh trong trận (server có thẩm quyền). Client chỉ gửi intent; UID lấy từ auth context.
  * Hợp đồng submitMove: { roomId, matchId, commandId, expectedVersion, from, to }.
  */
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
+import { onCall } from 'firebase-functions/v2/https';
 import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
@@ -10,7 +10,8 @@ import { getFunctions } from 'firebase-admin/functions';
 import { REGION } from './config.js';
 import { applyCommand, applyTimeoutCheck, validateCommand } from './core/match-core.js';
 import type { CommandOutcome, MatchCommand, MatchDoc } from './core/types.js';
-import { ENFORCE_APP_CHECK, httpsErrorFor, requireAuth, rtdb, runTx } from './firebase.js';
+import { ENFORCE_APP_CHECK, httpsError, httpsErrorFor, requireAuth, rtdb, runTx } from './firebase.js';
+import { keyOfMessage } from './messages.js';
 import { afterMatchCommitted } from './sync.js';
 
 // invoker 'public': Cloud Run cho phép gọi; xác thực Firebase Auth vẫn do requireAuth kiểm tra.
@@ -46,6 +47,8 @@ export async function runCommand(uid: string, roomId: string, matchId: string, c
     ok: result.ok,
     code: result.code,
     message: result.message ?? null,
+    /** Khóa thông báo để giao diện dịch (xem messages.ts). */
+    messageKey: keyOfMessage(result.message),
     version: result.match?.state?.v ?? null,
     status: result.match?.state?.status ?? null,
   };
@@ -53,8 +56,8 @@ export async function runCommand(uid: string, roomId: string, matchId: string, c
 
 function parseIds(data: unknown): { roomId: string; matchId: string } {
   const d = (data ?? {}) as { roomId?: unknown; matchId?: unknown };
-  if (typeof d.roomId !== 'string' || !ID_RE.test(d.roomId)) throw new HttpsError('invalid-argument', 'roomId không hợp lệ');
-  if (typeof d.matchId !== 'string' || !ID_RE.test(d.matchId)) throw new HttpsError('invalid-argument', 'matchId không hợp lệ');
+  if (typeof d.roomId !== 'string' || !ID_RE.test(d.roomId)) throw httpsError('invalid-argument', 'roomId không hợp lệ');
+  if (typeof d.matchId !== 'string' || !ID_RE.test(d.matchId)) throw httpsError('invalid-argument', 'matchId không hợp lệ');
   return { roomId: d.roomId, matchId: d.matchId };
 }
 
@@ -62,7 +65,7 @@ export const submitMove = onCall(callOpts, async (req) => {
   const user = requireAuth(req);
   const { roomId, matchId } = parseIds(req.data);
   const cmd = validateCommand({ ...(req.data as object), type: 'move' });
-  if (!cmd) throw new HttpsError('invalid-argument', 'Lệnh đi quân không hợp lệ');
+  if (!cmd) throw httpsError('invalid-argument', 'Lệnh đi quân không hợp lệ');
   return runCommand(user.uid, roomId, matchId, cmd);
 });
 
@@ -70,7 +73,7 @@ export const matchAction = onCall(callOpts, async (req) => {
   const user = requireAuth(req);
   const { roomId, matchId } = parseIds(req.data);
   const cmd = validateCommand(req.data);
-  if (!cmd || cmd.type === 'move') throw new HttpsError('invalid-argument', 'Lệnh không hợp lệ');
+  if (!cmd || cmd.type === 'move') throw httpsError('invalid-argument', 'Lệnh không hợp lệ');
   return runCommand(user.uid, roomId, matchId, cmd);
 });
 

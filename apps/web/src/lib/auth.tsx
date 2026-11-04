@@ -23,6 +23,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import i18n from '../i18n';
 import { fb, firebaseConfigured } from './firebase';
 
 export interface AuthState {
@@ -55,8 +56,15 @@ export function codeOf(uid: string): string {
   return uid.slice(0, 6).toUpperCase();
 }
 
+/** Tên khách mặc định theo ngôn ngữ đang chọn ("Khách ABC123" / "Guest ABC123"). */
 export function guestNameOf(uid: string): string {
-  return `Khách ${codeOf(uid)}`;
+  return i18n.t('profile.guestName', { code: codeOf(uid) });
+}
+
+/** Mọi dạng tên khách mặc định (mọi ngôn ngữ) – để nhận ra tên chưa được người dùng đổi. */
+function isDefaultGuestName(name: string, uid: string): boolean {
+  const code = codeOf(uid);
+  return Object.keys(i18n.options.resources ?? {}).some((lng) => i18n.getFixedT(lng)('profile.guestName', { code }) === name);
 }
 
 function providerOf(u: User | null): string {
@@ -68,6 +76,25 @@ function providerOf(u: User | null): string {
 interface Profile {
   displayName: string;
   code: string;
+}
+
+const PROFILE_CACHE_KEY = 'xq.profile.cache.v1';
+
+function readCachedProfile(uid: string): Profile | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY) ?? 'null') as (Profile & { uid: string }) | null;
+    return v && v.uid === uid && v.displayName ? { displayName: v.displayName, code: v.code } : null;
+  } catch {
+    return null;
+  }
+}
+
+function cacheProfile(uid: string, p: Profile): void {
+  try {
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ uid, ...p }));
+  } catch {
+    /* bỏ qua */
+  }
 }
 
 /**
@@ -83,7 +110,7 @@ async function ensureProfile(user: User, preferred?: string): Promise<Profile> {
   const realName = cleanName(preferred || user.displayName || user.email?.split('@')[0] || '');
   if (snap.exists()) {
     const cur = String(snap.get('displayName') ?? '');
-    const wasDefault = cur === guestNameOf(user.uid) || cur.length < 2;
+    const wasDefault = isDefaultGuestName(cur, user.uid) || cur.length < 2;
     const name = !isGuest && wasDefault && realName.length >= 2 ? realName : cur.length >= 2 ? cur : guestNameOf(user.uid);
     const photo = !isGuest && user.photoURL?.startsWith('https://') ? user.photoURL : (snap.get('photoURL') ?? null);
     if (snap.get('code') !== code || snap.get('isGuest') !== isGuest || name !== cur || photo !== (snap.get('photoURL') ?? null)) {
@@ -118,10 +145,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile({ displayName: '', code: '' });
       return;
     }
+    // Hiện ngay tên đã lưu lần trước (hoặc tên mặc định) trong lúc chờ Firestore, tránh menu trống.
+    setProfile((p) => (p.code === codeOf(u.uid) ? p : (readCachedProfile(u.uid) ?? { displayName: u.isAnonymous ? guestNameOf(u.uid) : (u.displayName ?? guestNameOf(u.uid)), code: codeOf(u.uid) })));
     try {
-      setProfile(await ensureProfile(u, preferred));
+      const p = await ensureProfile(u, preferred);
+      cacheProfile(u.uid, p);
+      setProfile(p);
     } catch {
-      setProfile({ displayName: u.isAnonymous ? guestNameOf(u.uid) : (u.displayName ?? 'Kỳ thủ'), code: codeOf(u.uid) });
+      setProfile({ displayName: u.isAnonymous ? guestNameOf(u.uid) : (u.displayName ?? i18n.t('profile.playerName', { code: codeOf(u.uid) })), code: codeOf(u.uid) });
     }
   }, []);
 
@@ -130,7 +161,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (auth.currentUser) return auth.currentUser;
     // Gộp nhiều lời gọi đồng thời thành một lần tạo khách.
     anonPending.current ??= signInAnonymously(auth)
-      .then((c) => c.user)
+      .then(async (c) => {
+        // Ghi hồ sơ (tên "Khách/Guest <ID>" theo ngôn ngữ) TRƯỚC khi trả về, để lệnh tiếp theo (tạo phòng…)
+        // không dùng tên dự phòng của server.
+        await ensureProfile(c.user).catch(() => undefined);
+        return c.user;
+      })
       .finally(() => {
         anonPending.current = null;
       });
@@ -216,9 +252,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       saveDisplayName: async (name) => {
         const u = fb().auth.currentUser;
-        if (!u) throw new Error('Chưa đăng nhập');
+        if (!u) throw new Error(i18n.t('authErrors.notSignedIn'));
         const n = cleanName(name);
-        if (n.length < 2) throw new Error('Tên cần từ 2 đến 24 ký tự');
+        if (n.length < 2) throw new Error(i18n.t('profile.nameLength'));
         const ref = doc(fb().fs, 'publicProfiles', u.uid);
         const snap = await getDoc(ref);
         await setDoc(ref, {
@@ -230,6 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updatedAt: serverTimestamp(),
         });
         setProfile({ displayName: n, code: codeOf(u.uid) });
+        cacheProfile(u.uid, { displayName: n, code: codeOf(u.uid) });
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -244,22 +281,8 @@ export function useAuth(): AuthState {
   return v;
 }
 
-export function authErrorVi(e: unknown): string {
-  const code = (e as { code?: string })?.code ?? '';
-  const map: Record<string, string> = {
-    'auth/invalid-credential': 'Email hoặc mật khẩu không đúng',
-    'auth/wrong-password': 'Mật khẩu không đúng',
-    'auth/user-not-found': 'Không tìm thấy tài khoản',
-    'auth/email-already-in-use': 'Email đã có tài khoản – hãy chọn "Đăng nhập" thay vì tạo mới',
-    'auth/credential-already-in-use': 'Tài khoản này đã được dùng ở nơi khác',
-    'auth/provider-already-linked': 'Tài khoản đã được liên kết',
-    'auth/weak-password': 'Mật khẩu cần ít nhất 6 ký tự',
-    'auth/invalid-email': 'Email không hợp lệ',
-    'auth/popup-closed-by-user': 'Bạn đã đóng cửa sổ đăng nhập',
-    'auth/popup-blocked': 'Trình duyệt chặn cửa sổ đăng nhập, hãy cho phép popup',
-    'auth/network-request-failed': 'Lỗi mạng, hãy thử lại',
-    'auth/operation-not-allowed': 'Phương thức đăng nhập này chưa được bật trong Firebase Console',
-    'auth/admin-restricted-operation': 'Đăng nhập khách chưa được bật trong Firebase Console',
-  };
-  return map[code] ?? (e as Error)?.message ?? 'Đã có lỗi xảy ra';
+export function authErrorText(e: unknown): string {
+  const code = ((e as { code?: string })?.code ?? '').replace(/^auth\//, '');
+  if (code && i18n.exists(`authErrors.${code}`)) return i18n.t(`authErrors.${code}` as 'authErrors.notSignedIn');
+  return (e as Error)?.message ?? i18n.t('common.errorGeneric');
 }

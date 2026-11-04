@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { formatClock } from './common';
 
 export function PlayerBar({
@@ -20,6 +21,7 @@ export function PlayerBar({
   rating?: number | null;
   note?: string;
 }) {
+  const { t } = useTranslation();
   const low = clockMs !== null && clockMs !== undefined && clockMs < 20_000;
   return (
     <div className={`player-bar ${side}${active ? ' active' : ''}`} data-testid={`player-${side}`}>
@@ -27,9 +29,9 @@ export function PlayerBar({
       <div className="player-name">
         <strong>{name}</strong>
         <small>
-          {side === 'red' ? 'Đỏ' : 'Đen'}
+          {t(`side.${side}`)}
           {rating ? ` · ${rating}` : ''}
-          {online === false ? ' · mất kết nối' : online ? ' · trực tuyến' : ''}
+          {online === false ? ` · ${t('panel.offline')}` : online ? ` · ${t('panel.online')}` : ''}
           {note ? ` · ${note}` : ''}
         </small>
       </div>
@@ -37,7 +39,7 @@ export function PlayerBar({
         <div
           className={`clock${running ? ' running' : ''}${low ? ' low' : ''}`}
           role="timer"
-          aria-label={`Thời gian còn lại của bên ${side === 'red' ? 'Đỏ' : 'Đen'}`}
+          aria-label={t('panel.clockOf', { side: t(`side.${side}`) })}
           data-testid={`clock-${side}`}
         >
           {formatClock(clockMs)}
@@ -48,6 +50,7 @@ export function PlayerBar({
 }
 
 export function MoveList({ moves, current, onSelect }: { moves: string[]; current?: number; onSelect?: (ply: number) => void }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLOListElement>(null);
   useEffect(() => {
     if (current === undefined || current >= moves.length) ref.current?.scrollTo({ top: ref.current.scrollHeight });
@@ -55,9 +58,9 @@ export function MoveList({ moves, current, onSelect }: { moves: string[]; curren
   const rows: Array<[string, string | undefined, number]> = [];
   for (let i = 0; i < moves.length; i += 2) rows.push([moves[i], moves[i + 1], i]);
   return (
-    <div className="move-list" aria-label="Lịch sử nước đi">
+    <div className="move-list" aria-label={t('panel.moveHistory')}>
       {moves.length === 0 ? (
-        <p className="muted small">Chưa có nước đi.</p>
+        <p className="muted small">{t('panel.noMoves')}</p>
       ) : (
         <ol ref={ref}>
           {rows.map(([r, b, i]) => (

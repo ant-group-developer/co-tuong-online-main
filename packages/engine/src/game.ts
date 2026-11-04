@@ -12,7 +12,7 @@
  *  5. Giới hạn an toàn 600 nửa nước => HÒA (max_plies) để không ván nào kẹt vô hạn.
  */
 import { positionFromFen, START_FEN, toFen } from './fen.js';
-import { moveToIccs, iccsToMove, moveToVietnamese } from './notation.js';
+import { moveToIccs, iccsToMove, moveToVietnamese, moveToWxf } from './notation.js';
 import { Position } from './position.js';
 import { type EndReason, type GameResult, type GameStatus, type Move, type Side, signToSide } from './types.js';
 
@@ -35,6 +35,8 @@ export interface MoveRecord {
   move: Move;
   iccs: string;
   vn: string;
+  /** Ký hiệu quốc tế WXF (giao diện tiếng Anh). */
+  wxf: string;
   side: Side;
   captured: number;
   givesCheck: boolean;
@@ -102,6 +104,7 @@ export class Game {
     }
     if (!legal) throw new IllegalMoveError(`Nước đi không hợp lệ: ${moveToIccs(m)}`, 'illegal');
     const vn = moveToVietnamese(this.position, m);
+    const wxf = moveToWxf(this.position, m);
     const side = signToSide(this.position.side);
     const captured = this.position.make(m);
     const givesCheck = this.position.inCheck();
@@ -110,6 +113,7 @@ export class Game {
       move: m,
       iccs: moveToIccs(m),
       vn,
+      wxf,
       side,
       captured,
       givesCheck,

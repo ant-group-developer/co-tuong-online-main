@@ -33,7 +33,7 @@ export class AiClient {
         const p = this.pending;
         this.pending = null;
         this.busy = false;
-        p?.reject(new Error(ev.message || 'AI worker lỗi'));
+        p?.reject(new Error(ev.message || 'AI worker error'));
       };
     }
     return this.worker;

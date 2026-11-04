@@ -1,20 +1,23 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getSoundPrefs, setSoundPrefs, subscribeSound } from '../lib/sound';
 
-export function Spinner({ label = 'Đang tải…' }: { label?: string }) {
+export function Spinner({ label }: { label?: string }) {
+  const { t } = useTranslation();
   return (
     <div className="state state-loading" role="status">
       <span className="spinner" aria-hidden="true" />
-      <span>{label}</span>
+      <span>{label ?? t('common.loading')}</span>
     </div>
   );
 }
 
-export function ErrorState({ title = 'Đã có lỗi', message, action }: { title?: string; message?: string; action?: ReactNode }) {
+export function ErrorState({ title, message, action }: { title?: string; message?: string; action?: ReactNode }) {
+  const { t } = useTranslation();
   return (
     <div className="state state-error" role="alert">
-      <strong>{title}</strong>
+      <strong>{title ?? t('common.error')}</strong>
       {message && <p>{message}</p>}
       {action}
     </div>
@@ -32,13 +35,14 @@ export function EmptyState({ title, message, action }: { title: string; message?
 }
 
 export function NotConfigured() {
+  const { t } = useTranslation();
   return (
     <ErrorState
-      title="Chế độ online chưa được cấu hình"
-      message="Chưa có cấu hình Firebase (biến VITE_FIREBASE_*) hoặc chế độ emulator. Bạn vẫn có thể chơi với máy. Xem docs/HUONG-DAN-CAU-HINH-FIREBASE.md."
+      title={t('notConfigured.title')}
+      message={t('notConfigured.message')}
       action={
         <Link className="btn" to="/ai">
-          Chơi với máy
+          {t('nav.ai')}
         </Link>
       }
     />
@@ -65,6 +69,7 @@ export function formatClock(ms: number): string {
 }
 
 export function SoundControl() {
+  const { t } = useTranslation();
   const [p, setP] = useState(getSoundPrefs());
   useEffect(() => subscribeSound(() => setP(getSoundPrefs())), []);
   return (
@@ -73,8 +78,8 @@ export function SoundControl() {
         type="button"
         className="btn btn-icon"
         aria-pressed={p.enabled}
-        aria-label={p.enabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
-        title={p.enabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
+        aria-label={p.enabled ? t('sound.off') : t('sound.on')}
+        title={p.enabled ? t('sound.off') : t('sound.on')}
         onClick={() => setSoundPrefs({ enabled: !p.enabled })}
       >
         {p.enabled ? '🔊' : '🔇'}
@@ -84,7 +89,7 @@ export function SoundControl() {
         min={0}
         max={100}
         value={Math.round(p.volume * 100)}
-        aria-label="Âm lượng"
+        aria-label={t('sound.volume')}
         disabled={!p.enabled}
         onChange={(e) => setSoundPrefs({ volume: Number(e.target.value) / 100 })}
       />
@@ -106,7 +111,7 @@ export function Toast({ message, onClose }: { message: string | null; onClose: (
   );
 }
 
-export function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose?: () => void }) {
+export function Modal({ title, children, onClose, wide }: { title: string; children: ReactNode; onClose?: () => void; wide?: boolean }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose?.();
     window.addEventListener('keydown', onKey);
@@ -114,7 +119,7 @@ export function Modal({ title, children, onClose }: { title: string; children: R
   }, [onClose]);
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+      <div className={`modal${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <h2>{title}</h2>
         {children}
       </div>

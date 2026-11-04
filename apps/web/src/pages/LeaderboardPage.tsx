@@ -18,9 +18,10 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EmptyState, ErrorState, NotConfigured, Spinner } from '../components/common';
-import { errorVi } from '../lib/api';
+import { errorText } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { fb } from '../lib/firebase';
 
@@ -40,6 +41,7 @@ interface Row {
 }
 
 export function LeaderboardPage() {
+  const { t } = useTranslation();
   const auth = useAuth();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot | null>(null);
@@ -78,48 +80,43 @@ export function LeaderboardPage() {
           }
         }
       } catch (e) {
-        setError(errorVi(e));
+        setError(errorText(e));
       }
     })();
   }, [auth.configured, auth.ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!auth.configured) return <NotConfigured />;
   if (error) return <ErrorState message={error} />;
-  if (rows === null) return <Spinner label="Đang tải bảng xếp hạng…" />;
+  if (rows === null) return <Spinner label={t('leaderboard.loading')} />;
 
   return (
     <div className="page">
-      <h1>Bảng xếp hạng</h1>
+      <h1>{t('leaderboard.title')}</h1>
       <p className="muted small">
-        Chỉ tính trận <strong>đấu xếp hạng</strong>; cần tối thiểu {PLACEMENT} trận để lên bảng. Tỉ lệ thắng = số trận thắng ÷ số trận xếp hạng
-        (hòa không tính là thắng). Đồng điểm xếp theo mã người chơi.
+        <Trans i18nKey="leaderboard.note" values={{ n: PLACEMENT }} components={{ b: <strong /> }} />
       </p>
       {me && (
         <div className="card highlight" data-testid="my-rank">
           {me.rank !== null ? (
-            <>
-              Hạng của bạn: <strong>#{me.rank}</strong> (số người có rating cao hơn + 1) · Rating {me.rating}
-            </>
+            <Trans i18nKey="leaderboard.myRank" values={{ rank: me.rank, rating: me.rating }} components={{ b: <strong /> }} />
           ) : (
-            <>
-              Rating {me.rating} · cần thêm {PLACEMENT - me.ratedGames} trận xếp hạng để lên bảng
-            </>
+            t('leaderboard.needMore', { rating: me.rating, n: PLACEMENT - me.ratedGames })
           )}
         </div>
       )}
       {rows.length === 0 ? (
-        <EmptyState title="Chưa có ai trên bảng" message={`Hoàn thành ${PLACEMENT} trận đấu xếp hạng để xuất hiện ở đây.`} />
+        <EmptyState title={t('leaderboard.empty')} message={t('leaderboard.emptyHint', { n: PLACEMENT })} />
       ) : (
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
                 <th scope="col">#</th>
-                <th scope="col">Kỳ thủ</th>
-                <th scope="col">Rating</th>
-                <th scope="col">Trận</th>
-                <th scope="col">T/H/B</th>
-                <th scope="col">Tỉ lệ thắng</th>
+                <th scope="col">{t('leaderboard.player')}</th>
+                <th scope="col">{t('leaderboard.rating')}</th>
+                <th scope="col">{t('leaderboard.games')}</th>
+                <th scope="col">{t('leaderboard.wdl')}</th>
+                <th scope="col">{t('leaderboard.winRate')}</th>
               </tr>
             </thead>
             <tbody>
@@ -147,8 +144,8 @@ export function LeaderboardPage() {
         </div>
       )}
       {hasMore && (
-        <button type="button" className="btn" onClick={() => void load(cursor).catch((e) => setError(errorVi(e)))}>
-          Tải thêm
+        <button type="button" className="btn" onClick={() => void load(cursor).catch((e) => setError(errorText(e)))}>
+          {t('common.loadMore')}
         </button>
       )}
     </div>

@@ -23,9 +23,3 @@ export function useMyActiveRoom(): MyRoom | null {
   if (!roomId || !status.data || !ACTIVE.includes(status.data)) return null;
   return { roomId, mode: entry.data!.mode, status: status.data as MyRoom['status'] };
 }
-
-export const ROOM_STATUS_VI: Record<MyRoom['status'], string> = {
-  waiting: 'đang chờ đối thủ',
-  ready: 'chờ hai bên sẵn sàng',
-  playing: 'đang đấu',
-};

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ErrorState, NotConfigured, Spinner } from '../components/common';
-import { api, errorVi } from '../lib/api';
+import { api, errorText } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
 /** /join/:token – đổi lời mời thành quyền theo UID (backend redeem), rồi vào phòng. */
 export function JoinPage() {
+  const { t } = useTranslation();
   const { token = '' } = useParams();
   const auth = useAuth();
   const nav = useNavigate();
@@ -28,7 +30,7 @@ export function JoinPage() {
         }
         nav(`/room/${r.roomId}`, { replace: true });
       } catch (e) {
-        setError(errorVi(e));
+        setError(errorText(e));
       }
     })();
   }, [auth, token, nav]);
@@ -37,14 +39,14 @@ export function JoinPage() {
   if (error)
     return (
       <ErrorState
-        title="Không dùng được lời mời"
+        title={t('join.failed')}
         message={error}
         action={
           <Link className="btn" to="/online">
-            Về sảnh
+            {t('common.backToLobby')}
           </Link>
         }
       />
     );
-  return <Spinner label="Đang kiểm tra lời mời…" />;
+  return <Spinner label={t('join.checking')} />;
 }

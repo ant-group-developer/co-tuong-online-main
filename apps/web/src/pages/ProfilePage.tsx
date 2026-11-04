@@ -3,11 +3,13 @@
  * /profile/:uid – hồ sơ người khác (chỉ thấy trận công khai).
  */
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, startAfter, where, type QueryDocumentSnapshot } from 'firebase/firestore';
-import { END_REASON_VI, type EndReason } from '@xq/engine';
+import type { EndReason } from '@xq/engine';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { EmptyState, ErrorState, NotConfigured, Spinner, Toast } from '../components/common';
-import { errorVi } from '../lib/api';
+import { fmtDateTime } from '../i18n';
+import { errorText } from '../lib/api';
 import { codeOf, useAuth } from '../lib/auth';
 import { fb } from '../lib/firebase';
 import { AccountPanel, LoginPanel } from './LoginPage';
@@ -40,16 +42,16 @@ interface HistoryRow {
 }
 
 const PAGE = 20;
-const RESULT_VI = { win: 'Thắng', loss: 'Thua', draw: 'Hòa', aborted: 'Hủy' } as const;
 
 export function ProfilePage() {
+  const { t } = useTranslation();
   const { uid: paramUid } = useParams();
   const auth = useAuth();
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
 
   if (!auth.configured) return <NotConfigured />;
-  if (!auth.ready || !auth.user) return <Spinner label="Đang tải…" />;
+  if (!auth.ready || !auth.user) return <Spinner />;
 
   // Hồ sơ người khác
   if (paramUid && paramUid !== auth.user.uid)
@@ -72,13 +74,13 @@ export function ProfilePage() {
 
   return (
     <div className="page narrow-wide">
-      <h1>{auth.isAnonymous ? 'Hồ sơ khách' : 'Hồ sơ của tôi'}</h1>
-      <div className="tabs" role="tablist" aria-label="Hồ sơ">
+      <h1>{auth.isAnonymous ? t('profile.guestTitle') : t('profile.myTitle')}</h1>
+      <div className="tabs" role="tablist" aria-label={t('profile.tabs')}>
         <button type="button" role="tab" aria-selected={tab === 'profile'} className={tab === 'profile' ? 'active' : ''} onClick={() => goTab('profile')} data-testid="tab-profile">
-          Hồ sơ
+          {t('profile.tabProfile')}
         </button>
         <button type="button" role="tab" aria-selected={tab === second} className={tab === second ? 'active' : ''} onClick={() => goTab(second)} data-testid={`tab-${second}`}>
-          {auth.isAnonymous ? 'Đăng nhập' : 'Tài khoản'}
+          {auth.isAnonymous ? t('profile.tabLogin') : t('profile.tabAccount')}
         </button>
       </div>
       <div className="tab-panel" role="tabpanel">
@@ -95,6 +97,7 @@ export function ProfilePage() {
 }
 
 function ProfileView({ uid, isMe }: { uid: string; isMe: boolean }) {
+  const { t } = useTranslation();
   const auth = useAuth();
   const [name, setName] = useState('');
   const [code, setCode] = useState(codeOf(uid));
@@ -130,13 +133,13 @@ function ProfileView({ uid, isMe }: { uid: string; isMe: boolean }) {
         setStats(s.exists() ? (s.data() as Stats) : null);
         await loadHistory(null);
       } catch (e) {
-        setError(errorVi(e));
+        setError(errorText(e));
       }
     })();
   }, [uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) return <ErrorState message={error} />;
-  if (history === null) return <Spinner label="Đang tải hồ sơ…" />;
+  if (history === null) return <Spinner label={t('profile.loading')} />;
 
   const shownName = isMe ? auth.displayName : name;
   const guest = isMe ? auth.isAnonymous : isGuest;
@@ -147,9 +150,9 @@ function ProfileView({ uid, isMe }: { uid: string; isMe: boolean }) {
     try {
       await auth.saveDisplayName(editName);
       setEditing(false);
-      setToast('Đã lưu tên hiển thị');
+      setToast(t('profile.nameSaved'));
     } catch (err) {
-      setToast(errorVi(err));
+      setToast(errorText(err));
     } finally {
       setSaving(false);
     }
@@ -173,14 +176,14 @@ function ProfileView({ uid, isMe }: { uid: string; isMe: boolean }) {
                 maxLength={24}
                 required
                 autoFocus
-                aria-label="Tên hiển thị"
+                aria-label={t('profile.nameLabel')}
                 data-testid="name-input"
               />
               <button type="submit" className="btn primary" disabled={saving} data-testid="name-save">
-                Lưu
+                {t('common.save')}
               </button>
               <button type="button" className="btn" onClick={() => setEditing(false)}>
-                Hủy
+                {t('common.cancel')}
               </button>
             </form>
           ) : (
@@ -198,85 +201,83 @@ function ProfileView({ uid, isMe }: { uid: string; isMe: boolean }) {
                   }}
                   data-testid="name-edit"
                 >
-                  Đổi tên
+                  {t('profile.rename')}
                 </button>
               )}
             </div>
           )}
           <div className="row">
             <span className="muted small">
-              ID: <code data-testid="profile-code">{code}</code>
+              {t('profile.id')}: <code data-testid="profile-code">{code}</code>
             </span>
-            <span className={`badge${guest ? '' : ' ok'}`}>{guest ? 'Khách' : 'Thành viên'}</span>
+            <span className={`badge${guest ? '' : ' ok'}`}>{guest ? t('profile.guest') : t('profile.member')}</span>
           </div>
         </div>
       </section>
       {isMe && guest && (
         <p className="muted small">
-          Tài khoản khách gắn với trình duyệt này. Xóa dữ liệu trình duyệt sẽ mất tài khoản – hãy đăng nhập (tab "Đăng nhập") để giữ lâu dài.
+          {t('profile.guestNote')}
         </p>
       )}
       <div className="stat-grid">
         <div className="stat card">
-          <small>Rating</small>
+          <small>{t('profile.rating')}</small>
           <strong data-testid="profile-rating">{stats?.rating ?? 1200}</strong>
-          <small className="muted">cao nhất {stats?.peakRating ?? 1200}</small>
+          <small className="muted">{t('profile.peak', { n: stats?.peakRating ?? 1200 })}</small>
         </div>
         <div className="stat card">
-          <small>Trận xếp hạng</small>
+          <small>{t('profile.rankedGames')}</small>
           <strong>{stats?.ratedGames ?? 0}</strong>
-          <small className="muted">
-            T {stats?.wins ?? 0} · H {stats?.draws ?? 0} · B {stats?.losses ?? 0}
-          </small>
+          <small className="muted">{t('profile.wdlShort', { w: stats?.wins ?? 0, d: stats?.draws ?? 0, l: stats?.losses ?? 0 })}</small>
         </div>
         <div className="stat card">
-          <small>Tỉ lệ thắng (xếp hạng)</small>
+          <small>{t('profile.winRate')}</small>
           <strong>{winRate}%</strong>
-          <small className="muted">thắng ÷ số trận</small>
+          <small className="muted">{t('profile.winRateNote')}</small>
         </div>
         <div className="stat card">
-          <small>Giao hữu</small>
+          <small>{t('profile.friendly')}</small>
           <strong>{stats?.friendlyGames ?? 0}</strong>
           <small className="muted">
-            T {stats?.friendlyWins ?? 0} · H {stats?.friendlyDraws ?? 0} · B {stats?.friendlyLosses ?? 0}
+            {t('profile.wdlShort', { w: stats?.friendlyWins ?? 0, d: stats?.friendlyDraws ?? 0, l: stats?.friendlyLosses ?? 0 })}
           </small>
         </div>
       </div>
       <section className="stack">
-        <h2 className="h3">Lịch sử trận {isMe ? '' : '(công khai)'}</h2>
+        <h2 className="h3">{isMe ? t('profile.history') : t('profile.historyPublic')}</h2>
         {history.length === 0 ? (
-          <EmptyState title="Chưa có trận nào" />
+          <EmptyState title={t('profile.noGames')} />
         ) : (
           <div className="table-wrap">
             <table className="table" data-testid="history">
               <thead>
                 <tr>
-                  <th scope="col">Thời gian</th>
-                  <th scope="col">Đối thủ</th>
-                  <th scope="col">Loại</th>
-                  <th scope="col">Kết quả</th>
-                  <th scope="col">Rating</th>
+                  <th scope="col">{t('profile.time')}</th>
+                  <th scope="col">{t('profile.opponent')}</th>
+                  <th scope="col">{t('profile.type')}</th>
+                  <th scope="col">{t('profile.result')}</th>
+                  <th scope="col">{t('profile.ratingCol')}</th>
                   <th scope="col" />
                 </tr>
               </thead>
               <tbody>
                 {history.map((h) => (
                   <tr key={h.matchId}>
-                    <td>{new Date(h.endedAt).toLocaleString('vi-VN')}</td>
+                    <td>{fmtDateTime(h.endedAt)}</td>
                     <td>
                       <Link to={`/profile/${h.opponent.uid}`}>{h.opponent.name}</Link>{' '}
-                      <small className="muted">({h.color === 'red' ? 'cầm Đỏ' : 'cầm Đen'})</small>
+                      <small className="muted">({h.color === 'red' ? t('profile.playedRed') : t('profile.playedBlack')})</small>
                     </td>
-                    <td>{h.rated ? 'Xếp hạng' : 'Giao hữu'}</td>
+                    <td>{h.rated ? t('profile.rankedType') : t('profile.friendlyType')}</td>
                     <td className={`res-${h.result}`}>
-                      {RESULT_VI[h.result]} <small className="muted">{END_REASON_VI[h.reason]}</small>
+                      {t(`profile.res_${h.result}`)} <small className="muted">{t(`endReason.${h.reason}`)}</small>
                     </td>
                     <td>
                       {h.rated && h.ratingAfter !== null && h.ratingBefore !== null
                         ? `${h.ratingAfter} (${h.ratingAfter - h.ratingBefore >= 0 ? '+' : ''}${h.ratingAfter - h.ratingBefore})`
                         : '—'}
                     </td>
-                    <td>{h.result !== 'aborted' && <Link to={`/replay/${h.matchId}`}>Xem lại</Link>}</td>
+                    <td>{h.result !== 'aborted' && <Link to={`/replay/${h.matchId}`}>{t('common.replay')}</Link>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -285,8 +286,8 @@ function ProfileView({ uid, isMe }: { uid: string; isMe: boolean }) {
         )}
         {hasMore && (
           <div className="row">
-            <button type="button" className="btn" onClick={() => void loadHistory(cursor).catch((e) => setError(errorVi(e)))}>
-              Tải thêm
+            <button type="button" className="btn" onClick={() => void loadHistory(cursor).catch((e) => setError(errorText(e)))}>
+              {t('common.loadMore')}
             </button>
           </div>
         )}

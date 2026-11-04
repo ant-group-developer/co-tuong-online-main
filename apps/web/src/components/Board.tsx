@@ -3,7 +3,9 @@
  * Dữ liệu luôn ở tọa độ canonical; `flipped` chỉ đổi cách vẽ và ánh xạ click/phím.
  * Bàn và quân được vẽ hoàn toàn bằng SVG/CSS (không dùng ảnh/brand của bản tham chiếu).
  */
-import { fromView, toView, PIECE_NAME_VI, squareToIccs } from '@xq/engine';
+import { fromView, toView, squareToIccs } from '@xq/engine';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react';
 
 const GLYPH_RED = ['', '帥', '仕', '相', '傌', '俥', '炮', '兵'];
@@ -170,7 +172,7 @@ const StaticBoard = memo(function StaticBoard() {
 });
 
 export function pieceLabel(p: number): string {
-  return `${PIECE_NAME_VI[Math.abs(p)]} ${p > 0 ? 'đỏ' : 'đen'}`;
+  return i18n.t('board.pieceOf', { piece: i18n.t(`pieces.${Math.abs(p)}` as 'pieces.1'), side: i18n.t(p > 0 ? 'side.red' : 'side.black') });
 }
 
 export function Board({
@@ -183,8 +185,9 @@ export function Board({
   checkSq,
   pendingTo,
   disabled,
-  ariaLabel = 'Bàn cờ',
+  ariaLabel,
 }: BoardProps) {
+  const { t } = useTranslation();
   const boardKey = boardKeyOf(board);
   const pieces = usePieceIds(board, boardKey);
   const [selected, setSelected] = useState<number | null>(null);
@@ -233,7 +236,7 @@ export function Board({
   const cells = [];
   for (let sq = 0; sq < 90; sq++) {
     const p = board[sq];
-    const label = `${squareToIccs(sq)}${p ? `: ${pieceLabel(p)}` : ''}${targetSet.has(sq) ? ' – có thể đi tới' : ''}${selected === sq ? ' – đang chọn' : ''}`;
+    const label = `${squareToIccs(sq)}${p ? `: ${pieceLabel(p)}` : ''}${targetSet.has(sq) ? ` – ${t('board.canMoveHere')}` : ''}${selected === sq ? ` – ${t('board.selected')}` : ''}`;
     cells.push(
       <button
         key={sq}
@@ -254,7 +257,7 @@ export function Board({
   }
 
   return (
-    <div className={`board${disabled ? ' is-disabled' : ''}`} role="group" aria-label={ariaLabel} onKeyDown={onKeyDown}>
+    <div className={`board${disabled ? ' is-disabled' : ''}`} role="group" aria-label={ariaLabel ?? t('board.label')} onKeyDown={onKeyDown}>
       <StaticBoard />
       {lastMove && (
         <>

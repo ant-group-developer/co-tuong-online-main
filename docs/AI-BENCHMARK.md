@@ -17,6 +17,9 @@ Engine tự viết bằng TypeScript (`packages/engine/src/ai`). Không dùng en
 
 ## Sáu profile (`packages/engine/src/ai/profiles.ts`)
 
+Mô tả hiển thị cho người chơi (thẻ chọn máy, theo khung "Dành cho" + "Máy chơi thế nào") nằm ở `apps/web/src/i18n/{vi,en}.ts` → `levels.*`,
+viết lại từ đúng các thông số dưới đây và kết quả đo ("tính trước N nước mỗi bên" = độ sâu tìm kiếm ÷ 2, lấy độ sâu trung bình đo được).
+
 | Mức | Thời gian tối đa | Node tối đa | Độ sâu tối đa | Tính năng | Chính sách sai lầm |
 |---|---|---|---|---|---|
 | Siêu dễ | 120 ms | 20k | 1 | không quiescence, không TT | 45% đi ngẫu nhiên; nhiễu ±300cp |

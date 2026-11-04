@@ -1,11 +1,13 @@
-import { END_REASON_VI, Game, type EndReason } from '@xq/engine';
+import { Game, type EndReason } from '@xq/engine';
 import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { Board } from '../components/Board';
 import { ErrorState, NotConfigured, Spinner } from '../components/common';
 import { MoveList, PlayerBar } from '../components/GamePanels';
-import { errorVi } from '../lib/api';
+import { fmtDateTime, moveText } from '../i18n';
+import { errorText } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { fb } from '../lib/firebase';
 
@@ -24,6 +26,7 @@ interface MatchArchive {
 }
 
 export function ReplayPage() {
+  const { t } = useTranslation();
   const { matchId = '' } = useParams();
   const auth = useAuth();
   const [data, setData] = useState<MatchArchive | null>(null);
@@ -39,7 +42,7 @@ export function ReplayPage() {
         await auth.ensureSignedIn();
         const snap = await getDoc(doc(fb().fs, 'matches', matchId));
         if (!snap.exists()) {
-          setError('Chưa có bản lưu của trận này (kết quả có thể đang được xử lý, hãy thử lại sau ít giây).');
+          setError(t('replay.noArchive'));
           return;
         }
         const d = snap.data() as MatchArchive;
@@ -47,7 +50,7 @@ export function ReplayPage() {
         setPly(d.moves.length);
         setFlipped(auth.user?.uid === d.black.uid);
       } catch (e) {
-        setError(errorVi(e));
+        setError(errorText(e));
       }
     })();
   }, [auth.configured, auth.ready, matchId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -82,13 +85,13 @@ export function ReplayPage() {
   }, [playing, ply, data]);
 
   if (!auth.configured) return <NotConfigured />;
-  if (error) return <ErrorState message={error} action={<Link className="btn" to="/profile">Về hồ sơ</Link>} />;
-  if (!data || !view) return <Spinner label="Đang tải bản ghi…" />;
+  if (error) return <ErrorState message={error} action={<Link className="btn" to="/profile">{t('replay.backToProfile')}</Link>} />;
+  if (!data || !view) return <Spinner label={t('replay.loading')} />;
 
   const last = view.history[view.history.length - 1];
   const top = flipped ? 'red' : 'black';
   const bottom = flipped ? 'black' : 'red';
-  const resultText = data.winner === 'draw' ? 'Hòa' : `${data[data.winner].name} (${data.winner === 'red' ? 'Đỏ' : 'Đen'}) thắng`;
+  const resultText = data.winner === 'draw' ? t('replay.draw') : t('replay.winner', { name: data[data.winner].name, side: t(`side.${data.winner}`) });
   return (
     <div className="game-layout">
       <section className="board-col">
@@ -99,7 +102,7 @@ export function ReplayPage() {
           lastMove={last ? { from: last.move & 127, to: last.move >> 7 } : null}
           checkSq={view.status.inCheck ? view.position.kings[view.sideToMove === 'red' ? 0 : 1] : null}
           disabled
-          ariaLabel="Bàn cờ – xem lại"
+          ariaLabel={t('board.replay')}
         />
         <PlayerBar name={data[bottom].name} side={bottom} rating={data[bottom].ratingBefore} />
       </section>
@@ -107,35 +110,33 @@ export function ReplayPage() {
         <div className="card">
           <strong>{resultText}</strong>
           <p className="muted small">
-            {END_REASON_VI[data.reason]} · {data.rated ? 'Xếp hạng' : 'Giao hữu'} · {new Date(data.endedAt).toLocaleString('vi-VN')}
+            {t(`endReason.${data.reason}`)} · {data.rated ? t('replay.ranked') : t('replay.friendly')} · {fmtDateTime(data.endedAt)}
           </p>
-          {full && !full.verified && <p className="error">Cảnh báo: bản ghi không khớp hash cuối.</p>}
+          {full && !full.verified && <p className="error">{t('replay.hashWarning')}</p>}
           <div className="actions">
-            <button type="button" className="btn" onClick={() => setPly(0)} aria-label="Về đầu">
+            <button type="button" className="btn" onClick={() => setPly(0)} aria-label={t('replay.first')}>
               ⏮
             </button>
-            <button type="button" className="btn" onClick={() => setPly((p) => Math.max(0, p - 1))} aria-label="Lùi">
+            <button type="button" className="btn" onClick={() => setPly((p) => Math.max(0, p - 1))} aria-label={t('replay.prev')}>
               ◀
             </button>
-            <button type="button" className="btn" onClick={() => setPlaying((v) => !v)} aria-label={playing ? 'Dừng' : 'Tự chạy'}>
+            <button type="button" className="btn" onClick={() => setPlaying((v) => !v)} aria-label={playing ? t('replay.pause') : t('replay.play')}>
               {playing ? '⏸' : '▶︎'}
             </button>
-            <button type="button" className="btn" onClick={() => setPly((p) => Math.min(data.moves.length, p + 1))} aria-label="Tiến">
+            <button type="button" className="btn" onClick={() => setPly((p) => Math.min(data.moves.length, p + 1))} aria-label={t('replay.next')}>
               ▶
             </button>
-            <button type="button" className="btn" onClick={() => setPly(data.moves.length)} aria-label="Về cuối">
+            <button type="button" className="btn" onClick={() => setPly(data.moves.length)} aria-label={t('replay.last')}>
               ⏭
             </button>
             <button type="button" className="btn" onClick={() => setFlipped((f) => !f)}>
-              Lật bàn
+              {t('common.flipBoard')}
             </button>
           </div>
-          <p className="muted small">
-            Nước {ply}/{data.moves.length}
-          </p>
+          <p className="muted small">{t('replay.position', { ply, total: data.moves.length })}</p>
         </div>
         <div className="card grow">
-          <MoveList moves={full?.game.history.map((h) => h.vn) ?? []} current={ply} onSelect={setPly} />
+          <MoveList moves={full?.game.history.map(moveText) ?? []} current={ply} onSelect={setPly} />
         </div>
       </aside>
     </div>

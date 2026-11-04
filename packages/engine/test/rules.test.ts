@@ -297,3 +297,21 @@ describe('ký hiệu Việt', () => {
     expect(g.play('i0h0').vn).toBe('X1-2');
   });
 });
+
+describe('ký hiệu quốc tế WXF', () => {
+  it('cùng các nước khai cuộc: C2=5, H8+7, H2+3, R9=8, R1=2', () => {
+    const g = new Game();
+    expect(g.play('h2e2').wxf).toBe('C2=5');
+    expect(g.play('h9g7').wxf).toBe('H8+7');
+    expect(g.play('h0g2').wxf).toBe('H2+3');
+    expect(g.play('i9h9').wxf).toBe('R9=8');
+    expect(g.play('i0h0').wxf).toBe('R1=2');
+  });
+
+  it('hai quân cùng cột: WXF dùng +/- trước chữ quân, ký hiệu Việt dùng t/s sau chữ quân', () => {
+    const g = new Game('3k5/9/9/9/9/R8/9/R8/9/4K4 w');
+    const rec = g.play('a4a6');
+    expect(rec.wxf).toBe('+R+2');
+    expect(rec.vn).toBe('Xt.2');
+  });
+});
