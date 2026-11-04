@@ -107,3 +107,67 @@ test('online: tạo phòng → khách vào → sẵn sàng → đi quân → rel
 
   await Promise.all([hostCtx.close(), guestCtx.close(), specCtx.close()]);
 });
+
+test('khách: tự có ID + đổi tên; hồ sơ/đăng nhập là 2 tab; nối email giữ ID; tạo phòng rồi đi trang khác vẫn được giữ trong phòng', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await ctx.newPage();
+
+  // 1) Vào web là có tài khoản khách với ID 6 ký tự, lưu trong DB
+  await page.goto('/profile');
+  const code = (await page.getByTestId('profile-code').textContent())!.trim();
+  expect(code).toMatch(/^[A-Z0-9]{6}$/);
+  await expect(page.getByTestId('profile-name')).toHaveText(`Khách ${code}`);
+  await expect(page.getByTestId('tab-login')).toHaveText('Đăng nhập');
+
+  // 2) Khách đổi tên, tải lại trang vẫn còn (đọc lại từ Firestore)
+  await page.getByTestId('name-edit').click();
+  await page.getByTestId('name-input').fill('Kỳ Thủ E2E');
+  await page.getByTestId('name-save').click();
+  await expect(page.getByTestId('nav-profile')).toContainText('Kỳ Thủ E2E');
+  await page.reload();
+  await expect(page.getByTestId('profile-name')).toHaveText('Kỳ Thủ E2E');
+  await expect(page.getByTestId('profile-code')).toHaveText(code);
+
+  // 3) Xếp hạng không cần đăng nhập
+  await page.goto('/ranked');
+  await expect(page.getByTestId('mm-start')).toBeEnabled();
+
+  // 4) Tạo phòng → sang trang khác → vẫn được nhắc + quay lại đúng phòng
+  await page.goto('/online');
+  await page.getByTestId('create-room').click();
+  await page.waitForURL(/\/room\/[a-z0-9]+$/);
+  const roomId = page.url().split('/room/')[1];
+  await page.goto('/ai');
+  await expect(page.getByTestId('active-room-bar')).toContainText(roomId);
+  await page.getByTestId('back-to-room').click();
+  await page.waitForURL(new RegExp(`/room/${roomId}$`));
+  await page.goto('/online');
+  await expect(page.getByTestId('my-room')).toContainText(roomId);
+  await expect(page.getByTestId('create-room')).toBeDisabled();
+  await page.goto('/ranked');
+  await expect(page.getByTestId('ranked-blocked')).toContainText(roomId);
+  await expect(page.getByTestId('mm-start')).toBeDisabled();
+  // Hủy phòng → hết bị giữ
+  await page.goto(`/room/${roomId}`);
+  await page.getByRole('button', { name: 'Hủy phòng' }).click();
+  await page.waitForURL(/\/online$/);
+  await expect(page.getByTestId('my-room')).toHaveCount(0);
+  await expect(page.getByTestId('create-room')).toBeEnabled();
+
+  // 5) Tab Đăng nhập: tạo tài khoản email => nối vào khách, giữ nguyên ID và tên; tab đổi thành "Tài khoản"
+  await page.goto('/login'); // route cũ chuyển sang tab đăng nhập
+  await page.waitForURL(/\/profile\?tab=login/);
+  await page.getByTestId('login-toggle').click();
+  await page.getByLabel('Tên hiển thị').fill('Không Dùng');
+  await page.getByTestId('login-email').fill(`e2e_${Date.now()}@test.local`);
+  await page.getByTestId('login-password').fill('secret123');
+  await page.getByTestId('login-submit').click();
+  await expect(page.getByTestId('tab-account')).toHaveText('Tài khoản');
+  await expect(page.getByTestId('profile-code')).toHaveText(code);
+  await expect(page.getByTestId('profile-name')).toHaveText('Kỳ Thủ E2E'); // tên đã tự đặt được giữ
+  await expect(page.locator('.profile-head .badge')).toHaveText('Thành viên');
+  await expect(page.getByTestId('tab-login')).toHaveCount(0);
+  await page.getByTestId('tab-account').click();
+  await expect(page.getByTestId('sign-out')).toBeVisible();
+  await ctx.close();
+});

@@ -10,6 +10,8 @@ import {
   requestRematch,
   setReady,
   updateSettings,
+  userRoomChanges,
+  activeSeatUids,
 } from '../../functions/src/core/room-core';
 
 let n = 0;
@@ -169,5 +171,21 @@ describe('phòng', () => {
     expect(r2.startedMatchId).toBe('mB');
     expect(Object.keys(r2.room!.matches!)).toEqual(['mA', 'mB']);
     expect(r2.room!.matches!.mB.players.red.uid).toBe(guest.uid);
+  });
+  it('chỉ mục userRooms: ghi người đang ngồi, xóa người vừa rời hoặc khi trận kết thúc', () => {
+    const w = base();
+    expect(userRoomChanges(null, w)).toEqual({ set: [owner.uid], clear: [] });
+    const j = joinAsPlayer(w, guest, 1).room!;
+    expect(userRoomChanges(w, j).set.sort()).toEqual([guest.uid, owner.uid].sort());
+    const left = leaveRoom(j, guest.uid, 2).room!;
+    expect(userRoomChanges(j, left)).toEqual({ set: [owner.uid], clear: [guest.uid] });
+    const cancelled = leaveRoom(w, owner.uid, 3).room!;
+    expect(cancelled.meta.status).toBe('cancelled');
+    expect(userRoomChanges(w, cancelled)).toEqual({ set: [], clear: [owner.uid] });
+    const p = setReady(setReady(j, owner.uid, true, 2, 'mA').room, guest.uid, true, 3, 'mA').room!;
+    expect(activeSeatUids(p).length).toBe(2);
+    const fin = JSON.parse(JSON.stringify(p));
+    fin.meta.status = 'finished';
+    expect(userRoomChanges(p, fin).clear.sort()).toEqual([guest.uid, owner.uid].sort());
   });
 });

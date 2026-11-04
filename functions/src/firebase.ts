@@ -26,13 +26,9 @@ export function requireAuth(req: CallableRequest<unknown>): AuthedUser {
   const token = req.auth.token as Record<string, unknown> & { firebase?: { sign_in_provider?: string } };
   const anonymous = token.firebase?.sign_in_provider === 'anonymous';
   const raw = (typeof token.name === 'string' && token.name) || (typeof token.email === 'string' && token.email.split('@')[0]) || '';
-  return { uid: req.auth.uid, anonymous, name: sanitizeName(raw) || (anonymous ? 'Khách' : 'Người chơi') };
-}
-
-export function requireIdentified(req: CallableRequest<unknown>): AuthedUser {
-  const u = requireAuth(req);
-  if (u.anonymous) throw new HttpsError('permission-denied', 'Đấu xếp hạng cần tài khoản (Google hoặc email), không dùng tài khoản khách');
-  return u;
+  // Tên dự phòng (khi hồ sơ chưa kịp tạo) khớp tên mặc định phía web: "Khách <ID 6 ký tự>".
+  const code = req.auth.uid.slice(0, 6).toUpperCase();
+  return { uid: req.auth.uid, anonymous, name: sanitizeName(raw) || (anonymous ? `Khách ${code}` : `Kỳ thủ ${code}`) };
 }
 
 export function sanitizeName(s: string): string {

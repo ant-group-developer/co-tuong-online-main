@@ -7,9 +7,14 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // ID người chơi: 6 ký tự đầu UID viết hoa (không giả được ID của người khác).
+    // isGuest phải khớp loại đăng nhập thật trong token (khách = anonymous).
     function validProfile() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['displayName', 'photoURL', 'createdAt', 'updatedAt'])
+      return d.keys().hasOnly(['displayName', 'photoURL', 'code', 'isGuest', 'createdAt', 'updatedAt'])
+        && (!('code' in d) || (d.code is string && d.code.matches('^[A-Z0-9]{6}$')
+            && request.auth.uid.upper().matches(d.code + '.*')))
+        && (!('isGuest' in d) || d.isGuest == (request.auth.token.firebase.sign_in_provider == 'anonymous'))
         && d.displayName is string
         && d.displayName.size() >= 2
         && d.displayName.size() <= 24

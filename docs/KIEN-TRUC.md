@@ -64,6 +64,7 @@ Nguyên tắc:
 | `roomLastSeen/{roomId}/{uid}` | thời điểm server lúc mất kết nối | chính UID đó | không ai |
 | `roomStats/{roomId}` | spectators (đếm theo UID, không tính người chơi), playersOnline | Functions (trigger) | như quyền đọc phòng |
 | `presence/{uid}/{connId}` | {at} | chính UID đó | user đã auth |
+| `userRooms/{uid}` | roomId, mode, at: phòng mà người đó đang **ngồi ghế** (waiting/ready/playing). Chỉ mục dẫn xuất, ghi sau mỗi commit phòng | Functions | chính UID đó |
 | `mm/queue/{uid}`, `mm/assign/{uid}`, `mm/active/{uid}` | hàng chờ, kết quả ghép, lease rated | Functions | chỉ `assign` của chính mình |
 | `invites/{sha256}` | roomId, role, expiresAt, revoked (chỉ lưu **hash** của token) | Functions | không ai |
 | `roomInvites/{roomId}/{inviteId}` | role, expiresAt, revoked | Functions | chủ phòng |
@@ -82,7 +83,7 @@ Ghép trận dùng transaction trên node `mm`, nên tuần tự hóa mọi thao
 
 | Collection | Field chính | Ghi | Đọc |
 |---|---|---|---|
-| `publicProfiles/{uid}` | displayName (2–24, không `<>`), photoURL (https), createdAt, updatedAt | **chính chủ** (rules validate schema) | user đã auth |
+| `publicProfiles/{uid}` | displayName (2–24, không `<>`), photoURL (https), **code** (ID người chơi = 6 ký tự đầu UID viết hoa, rules kiểm tra khớp UID), **isGuest** (rules kiểm tra khớp loại đăng nhập), createdAt, updatedAt | **chính chủ** (rules validate schema) | user đã auth |
 | `playerStats/{uid}` | rating, peakRating, ratedGames, wins, losses, draws, friendly*, ratingVersion, lastRatedMatchId | Functions | user đã auth |
 | `leaderboard/{uid}` | uid, displayName, photoURL, rating, ratedGames, wins, losses, draws, winRate | Functions (chỉ khi ≥5 trận rated) | user đã auth |
 | `matches/{matchId}` | players + rating trước/sau, winner, reason, startFen, moves[], finalHash, finalVersion, rulesVersion, visibility, playerUids | Functions | public: user đã auth; private: 2 người chơi; chỉ `get` |
@@ -92,6 +93,15 @@ Ghép trận dùng transaction trên node `mm`, nên tuần tự hóa mọi thao
 Index ghép: `leaderboard (rating desc, uid asc)`, `history (visibility asc, endedAt desc)`.
 
 ## 6. Luồng chính
+
+**Tài khoản khách**: lần đầu vào web, trình duyệt tự đăng nhập Firebase Anonymous và tạo `publicProfiles` với tên "Khách <ID>".
+Khách đổi tên được, có hồ sơ, chơi phòng bạn bè **và đấu xếp hạng**. Đăng nhập Google/tạo tài khoản email từ tài khoản khách dùng
+`linkWithPopup`/`linkWithCredential`: UID giữ nguyên nên ID, rating, lịch sử được giữ. Đăng nhập vào tài khoản đã tồn tại thì chuyển sang
+tài khoản đó (dữ liệu khách ở lại UID cũ). Trang `/profile` có 2 tab: Hồ sơ + Đăng nhập (khách) / Tài khoản (đã đăng nhập); `/login` chuyển về tab đăng nhập.
+
+**Một người – một phòng**: `createRoom`, `joinRoom` (vào ghế) và `mmEnqueue` gọi `assertNotInOtherRoom`: nếu `userRooms/{uid}` trỏ tới phòng còn
+hoạt động mà người đó đang ngồi ghế ⇒ lỗi `failed-precondition` kèm `details {code: "already_in_room", roomId}` (chỉ mục cũ được dọn).
+Web hiện thanh "Bạn đang ở phòng X – Quay lại phòng" trên mọi trang và thẻ tương ứng ở sảnh; vẫn được **xem** phòng khác.
 
 **Đi quân** (`submitMove {roomId, matchId, commandId, expectedVersion, from, to}`): UID lấy từ auth.
 Transaction trên trận chạy theo thứ tự:
@@ -147,14 +157,17 @@ Hạng hiển thị trên bảng = vị trí trong thứ tự (rating giảm d�
 | Bộ | Lệnh | Kết quả |
 |---|---|---|
 | Luật + AI | `npm run test:engine` | 51/51 |
-| Lõi server | `npm run test:unit` | 29/29 |
-| Security Rules | `npm run test:rules` | 14/14 |
-| Integration (emulator) | `npm run test:integration` | 11/11 |
-| E2E Playwright | `npm run test:e2e` | 2/2 |
+| Lõi server | `npm run test:unit` | 30/30 |
+| Security Rules | `npm run test:rules` | 16/16 |
+| Integration (emulator) | `npm run test:integration` | 13/13 |
+| E2E Playwright | `npm run test:e2e` | 3/3 |
 
 ## 8. Hạn chế đã biết
 
 - Luật giản lược: chưa phân xử trường tróc, chưa có luật giải đấu đầy đủ.
+- **Khách được đấu xếp hạng** (theo yêu cầu): một người có thể tạo nhiều tài khoản khách (trình duyệt ẩn danh, xóa dữ liệu) để
+  chơi lại từ 1200 hoặc tự đấu với chính mình để đẩy rating. Bảng xếp hạng vì vậy kém tin cậy hơn so với chỉ cho tài khoản Google/email.
+  Giảm thiểu hiện có: rate limit theo UID, App Check (tùy chọn), cần 5 trận rated mới lên bảng.
 - Ghép trận tuần tự hóa qua một node `mm`; chưa shard.
 - Emulator không chạy job theo lịch và không tôn trọng giờ hẹn Cloud Tasks. Ở local, hết giờ dựa vào `claimTimeout` của client. Production có đủ 3 lớp.
 - Bundle web ~1 MB (gzip ~330 KB), phần lớn là Firebase SDK. Chưa code-split riêng phần online.

@@ -160,6 +160,32 @@ describe('Firestore', () => {
     await assertSucceeds(getDoc(doc(bob, 'publicProfiles/alice')));
   });
 
+  it('ID khách: phải là 6 ký tự đầu UID (viết hoa); cờ isGuest phải khớp loại đăng nhập thật', async () => {
+    const anon = { firebase: { sign_in_provider: 'anonymous' } };
+    const google = { firebase: { sign_in_provider: 'google.com' } };
+    const g = env.authenticatedContext('gUest9xyz', anon).firestore();
+    const base = { displayName: 'Khách GUEST9', photoURL: null, createdAt: fsTs(), updatedAt: fsTs() };
+    await assertFails(setDoc(doc(g, 'publicProfiles/gUest9xyz'), { ...base, code: 'ABCDEF', isGuest: true })); // ID của người khác
+    await assertFails(setDoc(doc(g, 'publicProfiles/gUest9xyz'), { ...base, code: 'GUEST9', isGuest: false })); // khách tự nhận là thành viên
+    await assertSucceeds(setDoc(doc(g, 'publicProfiles/gUest9xyz'), { ...base, code: 'GUEST9', isGuest: true }));
+    // Khách đổi tên được
+    await assertSucceeds(updateDoc(doc(g, 'publicProfiles/gUest9xyz'), { displayName: 'Tướng Quân', updatedAt: fsTs() }));
+    // Sau khi nối Google: isGuest=false hợp lệ
+    const m = env.authenticatedContext('gUest9xyz', google).firestore();
+    await assertSucceeds(updateDoc(doc(m, 'publicProfiles/gUest9xyz'), { isGuest: false, updatedAt: fsTs() }));
+  });
+
+  it('userRooms: chỉ chủ ID đọc, không ai ghi', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await set(ref(ctx.database(), 'userRooms/alice'), { roomId: 'pub001', mode: 'friendly', at: 1 });
+    });
+    const alice = env.authenticatedContext('alice').database();
+    await assertSucceeds(get(ref(alice, 'userRooms/alice')));
+    await assertFails(get(ref(env.authenticatedContext('bob').database(), 'userRooms/alice')));
+    await assertFails(set(ref(alice, 'userRooms/alice'), null));
+    await assertFails(set(ref(alice, 'userRooms/alice'), { roomId: 'x', mode: 'friendly', at: 1 }));
+  });
+
   it('không client nào ghi được rating, stats, leaderboard, match, history, ledger', async () => {
     const alice = env.authenticatedContext('alice').firestore();
     await assertFails(setDoc(doc(alice, 'playerStats/alice'), { rating: 3000 }));

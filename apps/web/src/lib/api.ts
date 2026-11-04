@@ -61,6 +61,12 @@ export const api = {
   mmCancel: () => call<{ status: 'cancelled' | 'matched' | 'not_queued'; roomId: string | null }>('mmCancel', {}),
 };
 
+/** Nếu lỗi là "đang ở phòng khác": trả mã phòng đó. */
+export function alreadyInRoomOf(e: unknown): string | null {
+  const d = (e as { details?: { code?: string; roomId?: string } })?.details;
+  return d?.code === 'already_in_room' && d.roomId ? d.roomId : null;
+}
+
 /** Thông báo lỗi tiếng Việt từ lỗi Functions/Firebase. */
 export function errorVi(e: unknown): string {
   const err = e as { code?: string; message?: string };

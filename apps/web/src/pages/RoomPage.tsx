@@ -149,21 +149,31 @@ function WaitingRoom({
   const statusText = meta.status === 'waiting' ? 'Đang chờ đối thủ' : meta.status === 'ready' ? 'Đủ người – chờ hai bên sẵn sàng' : meta.status;
 
   return (
-    <div className="page narrow">
+    <div className="page narrow stack">
       <Toast message={toast} onClose={() => setToast(null)} />
-      <h1>Phòng {roomId}</h1>
-      <p className="muted">
-        {meta.visibility === 'public' ? 'Công khai' : 'Riêng tư'} · {tcLabel(meta.tc)} · Chơi với bạn (không tính điểm) ·{' '}
-        <span data-testid="room-status">{statusText}</span> · {stats?.spectators ?? 0} người xem
-      </p>
+      <header className="room-head">
+        <h1>Phòng {roomId}</h1>
+        <div className="chips">
+          <span className="badge">{meta.visibility === 'public' ? 'Công khai' : 'Riêng tư'}</span>
+          <span className="badge">{tcLabel(meta.tc)}</span>
+          <span className="badge">Chơi với bạn · không tính điểm</span>
+          <span className="badge ok" data-testid="room-status">
+            {statusText}
+          </span>
+          <span className="badge">👁 {stats?.spectators ?? 0} người xem</span>
+        </div>
+      </header>
 
       <div className="seats">
         {(['host', 'guest'] as const).map((k) => {
           const s = seats[k];
           return (
-            <div key={k} className={`seat card${s?.ready ? ' ready' : ''}`} data-testid={`seat-${k}`}>
-              <small className="muted">{k === 'host' ? 'Chủ phòng' : 'Khách'}</small>
-              <strong>{s ? s.name : 'Ghế trống'}</strong>
+            <div key={k} className={`seat card${s?.ready ? ' ready' : ''}${s?.uid === uid ? ' me' : ''}`} data-testid={`seat-${k}`}>
+              <small className="muted">{k === 'host' ? 'Chủ phòng' : 'Đối thủ'}</small>
+              <strong className="seat-name">
+                {s ? s.name : 'Ghế trống'}
+                {s?.uid === uid && <span className="muted small"> (bạn)</span>}
+              </strong>
               {s && <span className={`badge${s.ready ? ' ok' : ''}`}>{s.ready ? 'Sẵn sàng' : 'Chưa sẵn sàng'}</span>}
               {k === 'guest' && s && isOwner && (
                 <button type="button" className="btn small" disabled={busy} onClick={() => run(() => api.kickGuest(roomId))}>
@@ -175,7 +185,10 @@ function WaitingRoom({
         })}
       </div>
 
-      <div className="row">
+      <section className="card stack room-actions" aria-label="Thao tác">
+        {mySeat && meta.status === 'waiting' && <p className="muted small">Đang chờ người thứ hai vào ghế. Gửi link phòng ở mục "Mời bạn" bên dưới.</p>}
+        {mySeat && meta.status === 'ready' && <p className="muted small">Đủ hai người. Trận bắt đầu khi cả hai bấm "Sẵn sàng".</p>}
+        <div className="row">
         {mySeat && (
           <button
             type="button"
@@ -208,11 +221,13 @@ function WaitingRoom({
           </button>
         )}
         {!mySeat && !canClaim && <span className="muted">Bạn đang xem phòng này.</span>}
-      </div>
+        </div>
+      </section>
 
       {isOwner && (
-        <div className="card">
-          <h2 className="h3">Cài đặt (khóa khi trận bắt đầu)</h2>
+        <section className="card stack">
+          <h2 className="h3">Cài đặt phòng</h2>
+          <p className="muted small">Đổi cài đặt sẽ hủy trạng thái sẵn sàng của hai bên. Khóa khi trận bắt đầu.</p>
           <div className="form-grid">
             <label>
               Hiển thị
@@ -248,10 +263,10 @@ function WaitingRoom({
               </select>
             </label>
           </div>
-        </div>
+        </section>
       )}
 
-      <div className="card">
+      <section className="card stack">
         <h2 className="h3">Mời bạn</h2>
         {meta.visibility === 'public' ? (
           <>
@@ -340,7 +355,7 @@ function WaitingRoom({
         ) : (
           <p className="muted small">Chỉ chủ phòng tạo được lời mời cho phòng riêng tư.</p>
         )}
-      </div>
+      </section>
     </div>
   );
 }
@@ -728,7 +743,7 @@ function SeatsNote({ seats }: { seats: Seats }) {
   return (
     <p className="muted small">
       Chủ phòng: {seats.host.name}
-      {seats.guest ? ` · Khách: ${seats.guest.name}` : ''}
+      {seats.guest ? ` · Đối thủ: ${seats.guest.name}` : ''}
     </p>
   );
 }

@@ -165,7 +165,7 @@ code {
   justify-content: center;
   gap: 0.4rem;
   min-height: 40px;
-  padding: 0.45rem 0.95rem;
+  padding: 0.5rem 1.05rem;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: linear-gradient(180deg, rgba(92, 68, 40, 0.9), rgba(61, 45, 27, 0.95));
@@ -293,7 +293,7 @@ legend {
 .row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.75rem;
   align-items: center;
 }
 .row.between {
@@ -344,13 +344,15 @@ legend {
 }
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 4px 16px;
+}
+.form-grid label {
+  margin-bottom: 0;
 }
 .copy-row {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  gap: 0.6rem;
 }
 .copy-row input {
   flex: 1;
@@ -481,6 +483,7 @@ legend {
 .side-col {
   display: flex;
   flex-direction: column;
+  gap: 14px;
   max-height: calc(100dvh - var(--header-h) - 32px);
   position: sticky;
   top: calc(var(--header-h) + 16px);
@@ -488,8 +491,7 @@ legend {
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0.6rem 0;
+  gap: 0.6rem;
 }
 .check-alert {
   color: #ffd2c6;
@@ -499,9 +501,9 @@ legend {
 .offer {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.6rem;
   align-items: center;
-  padding: 0.5rem 0.7rem;
+  padding: 0.7rem 0.9rem;
   border-radius: 10px;
   background: rgba(245, 192, 90, 0.16);
   border: 1px solid rgba(245, 192, 90, 0.45);
@@ -510,9 +512,8 @@ legend {
 .result-banner {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.8rem;
-  margin: 0.6rem 0;
+  gap: 0.6rem;
+  padding: 1rem;
   border-radius: 10px;
   text-align: center;
   background: linear-gradient(180deg, rgba(255, 232, 173, 0.18), rgba(255, 232, 173, 0.06));
@@ -683,8 +684,16 @@ legend {
 .seat {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.55rem;
   align-items: flex-start;
+  padding: 16px 18px;
+  min-height: 120px;
+}
+.seat.me {
+  box-shadow: var(--shadow), inset 0 0 0 1px rgba(245, 192, 90, 0.45);
+}
+.seat-name {
+  font-size: 1.1rem;
 }
 .seat.ready {
   border-color: rgba(166, 226, 75, 0.6);
@@ -698,11 +707,13 @@ legend {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.6rem;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding: 12px 16px;
 }
 .room-item small {
   display: block;
+  margin-top: 4px;
 }
 .invite-box {
   margin-top: 0.6rem;
@@ -710,6 +721,12 @@ legend {
 .invite-list {
   padding-left: 1rem;
   font-size: 0.85rem;
+}
+.invite-list li {
+  margin-bottom: 0.5rem;
+}
+.invite-list li .btn {
+  margin-left: 0.5rem;
 }
 
 /* ---------------- Tables ---------------- */
@@ -831,7 +848,7 @@ legend {
     display: flex;
   }
   .main {
-    padding: 8px;
+    padding: 12px;
   }
   .brand span {
     font-size: 1rem;
@@ -845,4 +862,197 @@ legend {
   .hero h1 {
     font-size: 1.8rem;
   }
+}
+
+/* ---------------- Khoảng cách chung ----------------
+ * Các khối con trong .page / .stack / .card tự cách nhau (không để các nút, đoạn chữ, thẻ dính vào nhau).
+ * Dùng :where() để độ ưu tiên = 0: class riêng của từng thành phần vẫn ghi đè được.
+ */
+:where(.page, .stack, .card, .tab-panel) > * {
+  margin-top: 0;
+}
+:where(.page, .stack, .tab-panel) > * + * {
+  margin-top: 16px;
+}
+:where(.card) > * + * {
+  margin-top: 12px;
+}
+:where(.card) > :last-child {
+  margin-bottom: 0;
+}
+.stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.page > h1:first-child,
+.page > :first-child {
+  margin-top: 0.4rem;
+}
+.card {
+  margin-bottom: 0;
+}
+:where(.page, .stack) > .card + .card,
+:where(.page, .stack) > * + .card {
+  margin-top: 16px;
+}
+/* Thẻ dạng hàng ngang / lưới: không dùng margin dọc của bộ quy tắc trên */
+.room-item > *,
+.seat > *,
+.stat > *,
+.profile-head > *,
+.my-room > *,
+.active-room-bar > * {
+  margin-top: 0 !important;
+}
+.page.narrow-wide {
+  max-width: 960px;
+  margin: 0 auto;
+}
+.searching {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.chips .badge {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+}
+.room-head h1 {
+  margin: 0.4rem 0 0.7rem;
+}
+.room-actions .row {
+  gap: 0.75rem;
+}
+.modal > * + * {
+  margin-top: 14px;
+}
+.modal h2 {
+  margin: 0;
+}
+
+/* ---------------- Tabs ---------------- */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.tabs button {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  padding: 0.7rem 1.2rem;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tabs button:hover {
+  color: var(--paper-strong);
+}
+.tabs button.active {
+  color: var(--paper-strong);
+  border-bottom-color: var(--green);
+}
+.tabs.small-tabs button {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+/* ---------------- Hồ sơ ---------------- */
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+}
+.profile-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #8fcb1c, var(--green-dark));
+  color: #11200a;
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+.profile-id {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.profile-id input {
+  max-width: 280px;
+}
+.profile-name {
+  font-size: 1.35rem;
+  color: var(--paper-strong);
+  overflow-wrap: anywhere;
+}
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 10px 20px;
+  margin: 0;
+}
+.kv dt {
+  color: var(--muted);
+}
+.kv dd {
+  margin: 0;
+}
+
+/* ---------------- Header: người dùng + phòng đang ở ---------------- */
+.nav-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.nav-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--green-dark);
+  color: #eaffc9;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.active-room-bar {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 19;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(63, 110, 16, 0.92);
+  border-bottom: 1px solid rgba(166, 226, 75, 0.5);
+  color: #f1ffd9;
+  font-size: 0.92rem;
+}
+.my-room {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.room-list > .room-item {
+  margin-bottom: 10px;
 }
