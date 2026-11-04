@@ -5,9 +5,10 @@ import { endBefore, get, limitToLast, onValue, orderByChild, query, ref } from '
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { EmptyState, ErrorState, NotConfigured, Spinner, Toast } from '../components/common';
-import { api, errorVi, TC_OPTIONS, type Tc } from '../lib/api';
+import { alreadyInRoomOf, api, errorVi, TC_OPTIONS, type Tc } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { fb } from '../lib/firebase';
+import { ROOM_STATUS_VI, useMyActiveRoom } from '../lib/myroom';
 import type { PublicRoom } from '../lib/types';
 
 const PAGE = 15;
@@ -25,6 +26,7 @@ export function OnlinePage() {
   const [tc, setTc] = useState<Tc>('10+5');
   const [color, setColor] = useState<'red' | 'black' | 'random'>('random');
   const [code, setCode] = useState('');
+  const myRoom = useMyActiveRoom();
 
   useEffect(() => {
     if (!auth.configured || !auth.ready) return;
@@ -74,7 +76,9 @@ export function OnlinePage() {
       const r = await api.createRoom({ visibility, tc, ownerColor: color });
       nav(`/room/${r.roomId}`);
     } catch (err) {
-      setToast(errorVi(err));
+      const other = alreadyInRoomOf(err);
+      if (other) nav(`/room/${other}`);
+      else setToast(errorVi(err));
     } finally {
       setBusy(false);
     }
@@ -101,8 +105,23 @@ export function OnlinePage() {
     <div className="page">
       <Toast message={toast} onClose={() => setToast(null)} />
       <h1>Phòng & xem trận</h1>
+      {myRoom && (
+        <div className="card highlight my-room" data-testid="my-room">
+          <div className="stack-tight">
+            <strong>
+              Bạn đang ở {myRoom.mode === 'ranked' ? 'trận xếp hạng' : 'phòng'} {myRoom.roomId}
+            </strong>
+            <span className="muted small">{ROOM_STATUS_VI[myRoom.status]}. Rời phòng đó trước khi tạo hoặc vào phòng khác.</span>
+          </div>
+          <div className="row">
+            <Link className="btn primary" to={`/room/${myRoom.roomId}`} data-testid="my-room-back">
+              Quay lại phòng
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="two-col">
-        <section>
+        <section className="stack">
           <div className="row between">
             <h2 className="h3">Phòng công khai</h2>
             <Link to="/ranked" className="btn small">
@@ -149,8 +168,8 @@ export function OnlinePage() {
             </button>
           )}
         </section>
-        <section>
-          <form className="card" onSubmit={create} aria-label="Tạo phòng chơi với bạn">
+        <section className="stack">
+          <form className="card stack" onSubmit={create} aria-label="Tạo phòng chơi với bạn">
             <h2 className="h3">Chơi với bạn – tạo phòng</h2>
             <p className="muted small">Không tính điểm xếp hạng. Đấu xếp hạng do hệ thống ghép đối thủ.</p>
             <div className="form-grid">
@@ -180,11 +199,14 @@ export function OnlinePage() {
                 </select>
               </label>
             </div>
-            <button type="submit" className="btn primary" disabled={busy} data-testid="create-room">
-              Tạo phòng
-            </button>
+            <div className="row">
+              <button type="submit" className="btn primary" disabled={busy || !!myRoom} data-testid="create-room">
+                Tạo phòng
+              </button>
+              {myRoom && <span className="muted small">Bạn đang ở phòng {myRoom.roomId}</span>}
+            </div>
           </form>
-          <form className="card" onSubmit={join} aria-label="Vào phòng bằng mã">
+          <form className="card stack" onSubmit={join} aria-label="Vào phòng bằng mã">
             <h2 className="h3">Có mã phòng / mã mời?</h2>
             <div className="copy-row">
               <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Dán link hoặc mã" aria-label="Link hoặc mã" />

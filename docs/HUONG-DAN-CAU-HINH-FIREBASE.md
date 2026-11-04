@@ -62,7 +62,7 @@ Console → **Build → Authentication → Get started** → tab **Sign-in metho
 |---|---|
 | **Google** | Đăng nhập nhanh. Cần chọn *Project support email*. |
 | **Email/Password** | Đăng ký bằng email (chỉ bật dòng đầu, *không cần* "Email link"). |
-| **Anonymous** | Khách xem trận và chơi phòng bạn bè. Khách **không** được đấu xếp hạng (server chặn). |
+| **Anonymous** | **Bắt buộc.** Mỗi trình duyệt tự có tài khoản khách (ID 6 ký tự) để chơi phòng bạn bè, đấu xếp hạng, xem trận. |
 
 Tab **Settings → Authorized domains**: `localhost` và `<project>.web.app` có sẵn.
 Nếu dùng tên miền riêng (ví dụ `cotuong.ant-media.net`), **thêm tên miền đó vào đây**, nếu không đăng nhập Google sẽ báo lỗi.
@@ -182,7 +182,7 @@ App Check giúp chặn bot và script gọi thẳng API. Nó **bổ sung**, khô
 - [ ] Cửa sổ thứ 3 mở link phòng: thấy "Bạn đang xem (chỉ đọc)", số người xem tăng.
 - [ ] Tạo phòng **Riêng tư**: người không có lời mời thấy "Phòng riêng tư"; lời mời XEM không cho vào ghế.
 - [ ] Đầu hàng → vài giây sau Hồ sơ hiện 1 trận giao hữu.
-- [ ] Hai tài khoản (không phải khách) cùng bấm **Đấu xếp hạng** cùng thời gian → được ghép. Xong trận, rating đổi (1200 → 1220/1180).
+- [ ] Hai trình duyệt (khách hoặc đã đăng nhập) cùng bấm **Đấu xếp hạng** cùng thời gian → được ghép. Xong trận, rating đổi (1200 → 1220/1180).
 - [ ] Console → Functions → **Logs** không có lỗi đỏ lặp lại.
 
 ## 12. Chi phí & quota (tham khảo, không cam kết)

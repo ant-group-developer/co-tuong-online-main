@@ -1,13 +1,32 @@
 import { useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { envVar } from '../lib/env';
+import { ROOM_STATUS_VI, useMyActiveRoom } from '../lib/myroom';
 
 export const APP_NAME = envVar('VITE_APP_NAME') || 'Cờ Tướng Online';
 
+/** Thanh nhắc "bạn đang ở phòng X" trên mọi trang (trừ chính phòng đó). */
+function ActiveRoomBar() {
+  const my = useMyActiveRoom();
+  const loc = useLocation();
+  // Trang sảnh /online đã có thẻ "Bạn đang ở phòng" riêng.
+  if (!my || loc.pathname === `/room/${my.roomId}` || loc.pathname === '/online') return null;
+  return (
+    <div className="active-room-bar" role="status" data-testid="active-room-bar">
+      <span>
+        Bạn đang ở {my.mode === 'ranked' ? 'trận xếp hạng' : 'phòng'} <strong>{my.roomId}</strong> · {ROOM_STATUS_VI[my.status]}
+      </span>
+      <Link className="btn primary small" to={`/room/${my.roomId}`} data-testid="back-to-room">
+        Quay lại phòng
+      </Link>
+    </div>
+  );
+}
+
 export function Layout() {
   const auth = useAuth();
-  const nav = useNavigate();
+  const loc = useLocation();
   const [open, setOpen] = useState(false);
   const links = [
     { to: '/ai', label: 'Chơi với máy' },
@@ -15,6 +34,8 @@ export function Layout() {
     { to: '/online', label: 'Phòng & xem trận' },
     { to: '/leaderboard', label: 'Bảng xếp hạng' },
   ];
+  const onProfile = loc.pathname === '/profile';
+  const loginTab = onProfile && new URLSearchParams(loc.search).get('tab') === 'login';
   return (
     <div className="app">
       <a className="skip-link" href="#main">
@@ -34,26 +55,22 @@ export function Layout() {
               {l.label}
             </NavLink>
           ))}
-          {auth.configured &&
-            (auth.user && !auth.isAnonymous ? (
-              <>
-                <NavLink to="/profile">{auth.displayName || 'Hồ sơ'}</NavLink>
-                <button
-                  type="button"
-                  className="linklike"
-                  onClick={async () => {
-                    await auth.signOut();
-                    nav('/');
-                  }}
-                >
-                  Đăng xuất
-                </button>
-              </>
-            ) : (
-              <NavLink to="/login">{auth.user ? `${auth.displayName} · Đăng nhập` : 'Đăng nhập'}</NavLink>
-            ))}
+          {auth.configured && auth.user && (
+            <Link to="/profile" className={`nav-user${onProfile && !loginTab ? ' active' : ''}`} data-testid="nav-profile">
+              <span className="nav-avatar" aria-hidden="true">
+                {auth.displayName.slice(0, 1).toUpperCase() || '?'}
+              </span>
+              {auth.displayName || 'Hồ sơ'}
+            </Link>
+          )}
+          {auth.configured && auth.isAnonymous && (
+            <Link to="/profile?tab=login" className={loginTab ? 'active' : ''}>
+              Đăng nhập
+            </Link>
+          )}
         </nav>
       </header>
+      <ActiveRoomBar />
       <main id="main" className="main">
         <Outlet />
       </main>

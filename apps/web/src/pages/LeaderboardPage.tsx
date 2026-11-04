@@ -64,7 +64,7 @@ export function LeaderboardPage() {
       try {
         const u = await auth.ensureSignedIn();
         await load(null);
-        if (!u.isAnonymous) {
+        {
           const st = await getDoc(doc(fb().fs, 'playerStats', u.uid));
           if (st.exists()) {
             const rating = Number(st.get('rating'));

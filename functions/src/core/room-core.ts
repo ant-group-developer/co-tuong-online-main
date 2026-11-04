@@ -98,6 +98,22 @@ function seatOf(room: RoomDoc, uid: string): 'host' | 'guest' | null {
   return null;
 }
 
+/** Trạng thái mà người ngồi ghế được coi là "đang ở trong phòng" (không được vào/tạo phòng khác). */
+export const ACTIVE_ROOM_STATUSES: RoomStatus[] = ['waiting', 'ready', 'playing'];
+
+/** UID đang ngồi ghế của phòng còn hoạt động (rỗng nếu phòng đã kết thúc/hủy). */
+export function activeSeatUids(room: RoomDoc | null): string[] {
+  if (!room || !ACTIVE_ROOM_STATUSES.includes(room.meta.status)) return [];
+  return [room.seats?.host?.uid, room.seats?.guest?.uid].filter((u): u is string => !!u);
+}
+
+/** Chỉ mục userRooms cần đổi sau một lần commit phòng: ai cần ghi (đang ngồi), ai cần xóa (vừa rời/kết thúc). */
+export function userRoomChanges(prev: RoomDoc | null, next: RoomDoc | null): { set: string[]; clear: string[] } {
+  const before = [prev?.seats?.host?.uid, prev?.seats?.guest?.uid].filter((u): u is string => !!u);
+  const set = activeSeatUids(next);
+  return { set, clear: before.filter((u) => !set.includes(u)) };
+}
+
 /** Quyền đọc phòng (dùng ở server để kiểm tra trước khi cho xem/nhận ghế). */
 export function canView(room: RoomDoc, uid: string): boolean {
   return room.meta.visibility === 'public' || !!room.members?.[uid];

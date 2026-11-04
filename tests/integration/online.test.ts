@@ -253,10 +253,72 @@ describe('phòng riêng tư & người xem', () => {
   });
 });
 
+describe('giữ người chơi trong phòng (userRooms)', () => {
+  const inRoom = (roomId: string) => ({ code: 'functions/failed-precondition', details: { code: 'already_in_room', roomId } });
+
+  it('đang ngồi ở phòng thì không tạo/vào phòng khác hay tìm trận xếp hạng; rời phòng hoặc trận xong thì được', async () => {
+    const host = await client('anon');
+    const other = await client('anon');
+    const { roomId } = await host.call('createRoom', { visibility: 'public', tc: '10+5' });
+    // Chỉ mục cho chính người đó, người khác không đọc được
+    expect(await waitFor(() => host.read(`userRooms/${host.uid}`))).toMatchObject({ roomId, mode: 'friendly' });
+    await expect(other.read(`userRooms/${host.uid}`)).rejects.toThrow(/permission/i);
+
+    await expect(host.call('createRoom', { visibility: 'public', tc: '10+5' })).rejects.toMatchObject(inRoom(roomId));
+    const { roomId: otherRoom } = await other.call('createRoom', { visibility: 'public', tc: '10+5' });
+    await expect(host.call('joinRoom', { roomId: otherRoom, as: 'player' })).rejects.toMatchObject(inRoom(roomId));
+    await expect(host.call('mmEnqueue', { tc: '5+0' })).rejects.toMatchObject(inRoom(roomId));
+    // Vẫn được XEM phòng khác
+    expect((await host.call('joinRoom', { roomId: otherRoom, as: 'spectator' })).role).toBe('spectator');
+
+    // Rời phòng => chỉ mục bị xóa, tạo phòng mới được
+    await host.call('leaveRoom', { roomId });
+    expect(await host.read(`userRooms/${host.uid}`)).toBeNull();
+    const { roomId: second } = await host.call('createRoom', { visibility: 'private', tc: '5+0' });
+    expect((await host.read(`userRooms/${host.uid}`)).roomId).toBe(second);
+    await host.call('leaveRoom', { roomId: second });
+    await other.call('leaveRoom', { roomId: otherRoom });
+
+    // Trận kết thúc => cả hai không còn "đang ở phòng"
+    const a = await client('anon');
+    const b = await client('anon');
+    const { roomId: r3, matchId, red } = await startFriendly(a, b);
+    expect((await b.read(`userRooms/${b.uid}`)).roomId).toBe(r3);
+    await red.call('matchAction', { roomId: r3, matchId, commandId: cid(), expectedVersion: 1, type: 'resign' });
+    await waitFor(async () => (await a.read(`userRooms/${a.uid}`)) === null && (await b.read(`userRooms/${b.uid}`)) === null);
+  });
+
+  it('khách rời ghế: chỉ mục của khách bị xóa, của chủ phòng vẫn giữ', async () => {
+    const host = await client('anon');
+    const guest = await client('anon');
+    const { roomId } = await host.call('createRoom', { visibility: 'public', tc: '10+5' });
+    await guest.call('joinRoom', { roomId, as: 'player' });
+    expect((await guest.read(`userRooms/${guest.uid}`)).roomId).toBe(roomId);
+    await guest.call('leaveRoom', { roomId });
+    expect(await guest.read(`userRooms/${guest.uid}`)).toBeNull();
+    expect((await host.read(`userRooms/${host.uid}`)).roomId).toBe(roomId);
+    await host.call('leaveRoom', { roomId });
+  });
+});
+
 describe('đấu xếp hạng', () => {
-  it('khách (anonymous) không được đấu xếp hạng', async () => {
-    const anon = await client('anon');
-    await expectCode(anon.call('mmEnqueue', { tc: '5+0' }), 'permission-denied');
+  it('khách (anonymous) cũng được đấu xếp hạng', async () => {
+    const x = await client('anon');
+    const y = await client('anon');
+    expect((await x.call('mmEnqueue', { tc: '5+0' })).status).toBe('queued');
+    const ry = await y.call('mmEnqueue', { tc: '5+0' });
+    expect(ry.status).toBe('matched');
+    const roomId = ry.roomId as string;
+    const matchId = ry.matchId as string;
+    await waitFor(() => x.read(`rooms/${roomId}/meta`));
+    expect((await x.read(`userRooms/${x.uid}`)).roomId).toBe(roomId);
+    // Kết thúc trận để không để lại người trong hàng chờ cho test sau
+    await x.call('matchAction', { roomId, matchId, commandId: cid(), expectedVersion: 1, type: 'resign' });
+    const stats = await waitFor(async () => {
+      const s = await y.fsGet(`playerStats/${y.uid}`);
+      return s && s.ratedGames === 1 ? s : null;
+    }, 30_000);
+    expect(stats.rating).toBe(1220);
   });
 
   it('ghép hai người, chống tự ghép/enqueue trùng, chơi xong cộng Elo đúng một lần, lease được gỡ', async () => {

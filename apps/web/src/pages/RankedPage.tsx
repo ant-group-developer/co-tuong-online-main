@@ -4,10 +4,11 @@
 import { onValue, ref } from 'firebase/database';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ErrorState, NotConfigured, Spinner, useNow } from '../components/common';
-import { api, errorVi, TC_OPTIONS, type Tc } from '../lib/api';
+import { NotConfigured, Spinner, useNow } from '../components/common';
+import { alreadyInRoomOf, api, errorVi, TC_OPTIONS, type Tc } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { fb } from '../lib/firebase';
+import { useMyActiveRoom } from '../lib/myroom';
 
 export function RankedPage() {
   const auth = useAuth();
@@ -20,6 +21,8 @@ export function RankedPage() {
   const timer = useRef<number | null>(null);
   const active = useRef(false);
   const now = useNow(1000, searching);
+  const myRoom = useMyActiveRoom();
+  const inFriendly = myRoom?.mode === 'friendly';
 
   const stop = () => {
     active.current = false;
@@ -30,7 +33,7 @@ export function RankedPage() {
 
   // Nghe assignment realtime để vào trận ngay khi được ghép (không phải chờ lượt poll).
   useEffect(() => {
-    if (!auth.user || auth.isAnonymous || !auth.configured) return;
+    if (!auth.user || !auth.configured) return;
     return onValue(ref(fb().db, `mm/assign/${auth.user.uid}`), (s) => {
       const a = s.val() as { roomId?: string } | null;
       if (a?.roomId && active.current) {
@@ -38,7 +41,7 @@ export function RankedPage() {
         nav(`/room/${a.roomId}`);
       }
     });
-  }, [auth.user, auth.isAnonymous, auth.configured, nav]);
+  }, [auth.user, auth.configured, nav]);
 
   useEffect(() => () => stop(), []);
 
@@ -57,6 +60,11 @@ export function RankedPage() {
       else if (r.status === 'settling') setMsg('Đang cập nhật kết quả trận trước, sẽ tự thử lại…');
       else setMsg(null);
     } catch (e) {
+      if (alreadyInRoomOf(e)) {
+        stop();
+        setMsg(errorVi(e));
+        return;
+      }
       setMsg(errorVi(e));
     }
     if (active.current) timer.current = window.setTimeout(tick, 4000);
@@ -82,27 +90,21 @@ export function RankedPage() {
 
   if (!auth.configured) return <NotConfigured />;
   if (!auth.ready) return <Spinner />;
-  if (!auth.user || auth.isAnonymous)
-    return (
-      <ErrorState
-        title="Cần tài khoản để đấu xếp hạng"
-        message="Đấu xếp hạng yêu cầu đăng nhập bằng Google hoặc email (không dùng tài khoản khách) để bảo vệ bảng xếp hạng."
-        action={
-          <Link className="btn primary" to="/login?next=/ranked">
-            Đăng nhập
-          </Link>
-        }
-      />
-    );
+  if (!auth.user) return <Spinner label="Đang tạo tài khoản khách…" />;
 
   const waited = since ? Math.floor((now - since) / 1000) : 0;
   return (
-    <div className="page narrow">
+    <div className="page narrow stack">
       <h1>Đấu xếp hạng</h1>
       <p className="muted">
-        Hệ thống tự ghép đối thủ có rating gần bạn; khoảng rating mở rộng dần theo thời gian chờ. Muốn chơi với người quen? Dùng{' '}
+        Khách cũng đấu được: rating gắn với ID của bạn (<code>{auth.code}</code>). Hệ thống tự ghép đối thủ có rating gần bạn; khoảng rating mở rộng dần theo thời gian chờ. Muốn chơi với người quen? Dùng{' '}
         <Link to="/online">phòng chơi với bạn</Link> (không tính điểm).
       </p>
+      {inFriendly && myRoom && (
+        <div className="banner" data-testid="ranked-blocked">
+          Bạn đang ở phòng chơi với bạn <strong>{myRoom.roomId}</strong>. Hãy <Link to={`/room/${myRoom.roomId}`}>quay lại phòng</Link> và rời phòng trước khi tìm trận xếp hạng.
+        </div>
+      )}
       {rating !== null && (
         <p>
           Rating hiện tại: <strong data-testid="my-rating">{rating}</strong>
@@ -120,8 +122,10 @@ export function RankedPage() {
         </div>
       </fieldset>
       {searching ? (
-        <div className="card highlight" role="status" aria-live="polite">
-          <span className="spinner" aria-hidden="true" /> Đang tìm đối thủ… {waited}s
+        <div className="card highlight stack" role="status" aria-live="polite">
+          <p className="searching">
+            <span className="spinner" aria-hidden="true" /> Đang tìm đối thủ… {waited}s
+          </p>
           <div className="row">
             <button type="button" className="btn" onClick={cancel} data-testid="mm-cancel">
               Hủy tìm
@@ -129,9 +133,11 @@ export function RankedPage() {
           </div>
         </div>
       ) : (
-        <button type="button" className="btn primary big" onClick={startSearch} data-testid="mm-start">
-          Tìm trận
-        </button>
+        <div className="row">
+          <button type="button" className="btn primary big" onClick={startSearch} disabled={inFriendly} data-testid="mm-start">
+            Tìm trận
+          </button>
+        </div>
       )}
       {msg && <p className="muted">{msg}</p>}
     </div>

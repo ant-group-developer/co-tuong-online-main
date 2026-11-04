@@ -58,6 +58,10 @@
       }
     },
 
+    "userRooms": {
+      "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
+    },
+
     "mm": {
       "assign": {
         "$uid": { ".read": "auth != null && auth.uid === $uid" }
