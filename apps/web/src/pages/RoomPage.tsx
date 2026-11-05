@@ -6,13 +6,15 @@ import { iccsToSquare, replayMoves, squareToIccs, type Game, type Side } from '@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Board } from '../components/Board';
+import { BoardView, ViewToggle } from '../components/BoardView';
 import { ErrorState, Modal, NotConfigured, SoundControl, Spinner, Toast, useNow } from '../components/common';
 import { MoveList, PlayerBar, ResultBanner } from '../components/GamePanels';
 import { fmtDateTime, moveText } from '../i18n';
 import { api, commandText, errorText, newCommandId, tcLabel, TC_OPTIONS } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useConnection, useRoomPresence, useRtdb } from '../lib/rtdb';
+import { useViewMode, type EmoteId, type Mood, type SeatVisual } from '../lib/avatars';
+import { sendEmote, useAvatarOf, useRoomEmotes } from '../lib/seatVisuals';
 import { playSound } from '../lib/sound';
 import type { MatchPlayers, MatchState, RoomMeta, RoomStats, Seats } from '../lib/types';
 
@@ -402,6 +404,10 @@ function MatchView({
   const st = useRtdb<MatchState>(`rooms/${roomId}/matches/${matchId}/state`);
   const players = useRtdb<MatchPlayers>(`rooms/${roomId}/matches/${matchId}/players`);
   const { offsetMs } = useConnection();
+  const [view] = useViewMode();
+  const redAvatar = useAvatarOf(players.data?.red.uid);
+  const blackAvatar = useAvatarOf(players.data?.black.uid);
+  const emotes = useRoomEmotes(roomId, offsetMs);
   const [pending, setPending] = useState<Pending | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmResign, setConfirmResign] = useState(false);
@@ -568,9 +574,23 @@ function MatchView({
   const isFriendly = meta.mode === 'friendly';
   const rematchMine = !!meta.rematch?.[uid];
   const rematchOther = !!meta.rematch && Object.keys(meta.rematch).some((k) => k !== uid);
+  // Bàn 3D: nhân vật, nét mặt (đang nghĩ / thắng / thua) và biểu cảm của từng người.
+  const moodOf = (s: Side): Mood => {
+    if (over) return !res || res.winner === 'draw' || state.status === 'aborted' ? 'idle' : res.winner === s ? 'happy' : 'sad';
+    return state.turn === s && s !== mySide ? 'thinking' : 'idle';
+  };
+  const seat = (s: Side): SeatVisual => {
+    const e = emotes[pl[s].uid];
+    return { avatar: s === 'red' ? redAvatar : blackAvatar, mood: moodOf(s), emote: e ? { id: e.id, at: e.at } : null };
+  };
+  const onEmote = isPlayer
+    ? (e: EmoteId) => {
+        sendEmote(roomId, uid, e).catch(() => setToast(t('view3d.emotes.tooFast')));
+      }
+    : undefined;
 
   return (
-    <div className="game-layout">
+    <div className={`game-layout${view === '3d' ? ' is-3d' : ''}`}>
       <Toast message={toast} onClose={() => setToast(null)} />
       {confirmResign && (
         <Modal title={t('room.resignTitle')} onClose={() => setConfirmResign(false)}>
@@ -603,7 +623,10 @@ function MatchView({
           active={!over && state.turn === top}
           online={stats?.playersOnline ? !!stats.playersOnline[pl[top].uid] : null}
         />
-        <Board
+        <BoardView
+          top={seat(top)}
+          bottom={seat(bottom)}
+          onEmote={onEmote}
           board={display.position.board}
           flipped={flipped}
           canSelect={canSelect}
@@ -738,6 +761,7 @@ function MatchView({
             </Link>
           </div>
           <SoundControl />
+          <ViewToggle />
           {oppOnline === false && !over && <p className="muted small">{t('room.oppOffline')}</p>}
         </div>
         <div className="card grow">

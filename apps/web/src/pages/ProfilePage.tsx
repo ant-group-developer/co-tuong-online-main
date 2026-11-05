@@ -7,6 +7,7 @@ import type { EndReason } from '@xq/engine';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { AvatarPicker } from '../components/AvatarPicker';
 import { EmptyState, ErrorState, NotConfigured, Spinner, Toast } from '../components/common';
 import { fmtDateTime } from '../i18n';
 import { errorText } from '../lib/api';
@@ -219,6 +220,7 @@ function ProfileView({ uid, isMe }: { uid: string; isMe: boolean }) {
           {t('profile.guestNote')}
         </p>
       )}
+      {isMe && <AvatarPicker onSaved={setToast} />}
       <div className="stat-grid">
         <div className="stat card">
           <small>{t('profile.rating')}</small>

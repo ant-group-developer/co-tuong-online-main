@@ -24,6 +24,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import i18n from '../i18n';
+import { DEFAULT_AVATAR, isAvatarId, type AvatarId } from './avatars';
 import { fb, firebaseConfigured } from './firebase';
 
 export interface AuthState {
@@ -37,6 +38,8 @@ export interface AuthState {
   /** 'google.com' | 'password' | 'anonymous' | '' */
   provider: string;
   email: string | null;
+  /** Nhân vật 3D đã chọn (mặc định Thư sinh). */
+  avatar: AvatarId;
   configured: boolean;
   ensureSignedIn: () => Promise<User>;
   signInGoogle: () => Promise<void>;
@@ -44,6 +47,7 @@ export interface AuthState {
   signUpEmail: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   saveDisplayName: (name: string) => Promise<void>;
+  saveAvatar: (avatar: AvatarId) => Promise<void>;
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -76,6 +80,12 @@ function providerOf(u: User | null): string {
 interface Profile {
   displayName: string;
   code: string;
+  avatar?: AvatarId | null;
+}
+
+/** Giữ nguyên trường nhân vật khi ghi lại hồ sơ (setDoc ghi đè cả tài liệu). */
+function avatarField(v: unknown): { avatar?: AvatarId } {
+  return isAvatarId(v) ? { avatar: v } : {};
 }
 
 const PROFILE_CACHE_KEY = 'xq.profile.cache.v1';
@@ -83,7 +93,7 @@ const PROFILE_CACHE_KEY = 'xq.profile.cache.v1';
 function readCachedProfile(uid: string): Profile | null {
   try {
     const v = JSON.parse(localStorage.getItem(PROFILE_CACHE_KEY) ?? 'null') as (Profile & { uid: string }) | null;
-    return v && v.uid === uid && v.displayName ? { displayName: v.displayName, code: v.code } : null;
+    return v && v.uid === uid && v.displayName ? { displayName: v.displayName, code: v.code, avatar: isAvatarId(v.avatar) ? v.avatar : null } : null;
   } catch {
     return null;
   }
@@ -113,10 +123,11 @@ async function ensureProfile(user: User, preferred?: string): Promise<Profile> {
     const wasDefault = isDefaultGuestName(cur, user.uid) || cur.length < 2;
     const name = !isGuest && wasDefault && realName.length >= 2 ? realName : cur.length >= 2 ? cur : guestNameOf(user.uid);
     const photo = !isGuest && user.photoURL?.startsWith('https://') ? user.photoURL : (snap.get('photoURL') ?? null);
+    const av = snap.get('avatar') as unknown;
     if (snap.get('code') !== code || snap.get('isGuest') !== isGuest || name !== cur || photo !== (snap.get('photoURL') ?? null)) {
-      await setDoc(ref, { displayName: name, photoURL: photo, code, isGuest, createdAt: snap.get('createdAt'), updatedAt: serverTimestamp() });
+      await setDoc(ref, { displayName: name, photoURL: photo, code, isGuest, ...avatarField(av), createdAt: snap.get('createdAt'), updatedAt: serverTimestamp() });
     }
-    return { displayName: name, code };
+    return { displayName: name, code, avatar: isAvatarId(av) ? av : null };
   }
   const name = !isGuest && realName.length >= 2 ? realName : guestNameOf(user.uid);
   await setDoc(ref, {
@@ -133,7 +144,7 @@ async function ensureProfile(user: User, preferred?: string): Promise<Profile> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(!firebaseConfigured);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Profile>({ displayName: '', code: '' });
+  const [profile, setProfile] = useState<Profile>({ displayName: '', code: '', avatar: null });
   // User của Firebase là object bị sửa tại chỗ khi link → dùng bộ đếm để React cập nhật.
   const [rev, setRev] = useState(0);
   const anonPending = useRef<Promise<User> | null>(null);
@@ -211,6 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAnonymous: !!user?.isAnonymous,
       provider: providerOf(user),
       email: user?.email ?? null,
+      avatar: profile.avatar ?? DEFAULT_AVATAR,
       configured: firebaseConfigured,
       ensureSignedIn,
       signInGoogle: async () => {
@@ -262,11 +274,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           photoURL: snap.get('photoURL') ?? null,
           code: codeOf(u.uid),
           isGuest: u.isAnonymous,
+          ...avatarField(snap.get('avatar')),
           createdAt: snap.get('createdAt') ?? serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
-        setProfile({ displayName: n, code: codeOf(u.uid) });
-        cacheProfile(u.uid, { displayName: n, code: codeOf(u.uid) });
+        const p = { displayName: n, code: codeOf(u.uid), avatar: isAvatarId(snap.get('avatar')) ? (snap.get('avatar') as AvatarId) : null };
+        setProfile(p);
+        cacheProfile(u.uid, p);
+      },
+      saveAvatar: async (avatar) => {
+        const u = fb().auth.currentUser;
+        if (!u) throw new Error(i18n.t('authErrors.notSignedIn'));
+        if (!isAvatarId(avatar)) return;
+        const ref = doc(fb().fs, 'publicProfiles', u.uid);
+        const snap = await getDoc(ref);
+        const name = String(snap.get('displayName') ?? '') || guestNameOf(u.uid);
+        await setDoc(ref, {
+          displayName: name,
+          photoURL: snap.get('photoURL') ?? null,
+          code: codeOf(u.uid),
+          isGuest: u.isAnonymous,
+          avatar,
+          createdAt: snap.get('createdAt') ?? serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        const p = { displayName: name, code: codeOf(u.uid), avatar };
+        setProfile(p);
+        cacheProfile(u.uid, p);
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

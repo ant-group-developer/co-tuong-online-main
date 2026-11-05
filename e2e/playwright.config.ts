@@ -18,6 +18,8 @@ export default defineConfig({
     locale: 'vi-VN',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // WebGL cho bàn 3D khi chạy headless (không có GPU).
+    launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] },
   },
   webServer: {
     command: 'npm run dev:emu -w apps/web -- --port 5174 --strictPort --host 127.0.0.1',
