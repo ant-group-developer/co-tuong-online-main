@@ -84,16 +84,24 @@ export function AvatarPicker({ onSaved }: { onSaved?: (msg: string) => void }) {
                 <strong>{t(`avatars.${id}.name`)}</strong>
                 <span className="muted small">{t(`avatars.${id}.desc`)}</span>
               </span>
-              {auth.avatar === id && <span className="badge ok">{t('avatars.inUse')}</span>}
+              {auth.avatar === id && (
+                <span className="avatar-active" role="img" aria-label={t('avatars.inUse')} title={t('avatars.inUse')} data-testid="avatar-active">
+                  <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                    <path d="M3.2 8.4 6.4 11.4 12.8 4.8" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              )}
             </button>
           ))}
         </div>
       </div>
-      <div className="row">
-        <button type="button" className="btn primary" disabled={saving || sel === auth.avatar} onClick={save} data-testid="avatar-save">
-          {sel === auth.avatar ? t('avatars.inUseLong', { name: t(`avatars.${sel}.name`) }) : t('avatars.use', { name: t(`avatars.${sel}.name`) })}
-        </button>
-      </div>
+      {sel !== auth.avatar && (
+        <div className="row">
+          <button type="button" className="btn primary" disabled={saving} onClick={save} data-testid="avatar-save">
+            {t('avatars.use', { name: t(`avatars.${sel}.name`) })}
+          </button>
+        </div>
+      )}
     </section>
   );
 }

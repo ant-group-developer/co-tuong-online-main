@@ -266,8 +266,9 @@ test('bàn 3D: bật 3D, đổi góc nhìn, gửi biểu cảm, đi quân bằng
   await page.goto('/profile');
   await page.getByTestId('avatar-daosi').click();
   await page.getByTestId('avatar-save').click();
-  await expect(page.getByTestId('avatar-save')).toHaveText('Đang dùng Đạo sĩ');
-  await expect(page.getByTestId('avatar-save')).toBeDisabled();
+  // Lưu xong: thẻ Đạo sĩ có dấu tích "đang dùng", nút lưu ẩn đi
+  await expect(page.getByTestId('avatar-daosi').getByTestId('avatar-active')).toBeVisible();
+  await expect(page.getByTestId('avatar-save')).toHaveCount(0);
   await page.reload();
   await expect(page.getByTestId('avatar-daosi')).toHaveAttribute('aria-checked', 'true');
   expect(errors).toEqual([]);
