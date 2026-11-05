@@ -66,6 +66,7 @@ export function Layout() {
     { to: '/ranked', label: t('nav.ranked') },
     { to: '/online', label: t('nav.online') },
     { to: '/leaderboard', label: t('nav.leaderboard') },
+    { to: '/rules', label: t('nav.rules') },
   ];
   const onProfile = loc.pathname === '/profile';
   const loginTab = onProfile && new URLSearchParams(loc.search).get('tab') === 'login';
@@ -93,7 +94,9 @@ export function Layout() {
               <span className="nav-avatar" aria-hidden="true">
                 {auth.displayName.slice(0, 1).toUpperCase() || '?'}
               </span>
-              {auth.displayName || t('nav.profile')}
+              <span className="nav-user-name" title={auth.displayName || undefined}>
+                {auth.displayName || t('nav.profile')}
+              </span>
             </Link>
           )}
           {auth.configured && auth.isAnonymous && (
@@ -108,13 +111,6 @@ export function Layout() {
       <main id="main" className="main">
         <Outlet />
       </main>
-      <footer className="footer">
-        <span>
-          © {new Date().getFullYear()} {appName}
-        </span>
-        <span className="muted">{t('footer.rules')}</span>
-        <Link to="/rules">{t('footer.rulesLink')}</Link>
-      </footer>
     </div>
   );
 }

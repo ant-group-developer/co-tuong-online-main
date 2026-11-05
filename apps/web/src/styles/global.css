@@ -128,6 +128,7 @@ code {
   padding: 0.45rem 0.7rem;
   border-radius: 8px;
   font-size: 0.92rem;
+  white-space: nowrap;
 }
 .nav a:hover,
 .nav a.active {
@@ -145,17 +146,6 @@ code {
   max-width: 1240px;
   margin: 0 auto;
   padding: 16px;
-}
-
-.footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
-  padding: 1rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-  border-top: 1px solid var(--border);
 }
 
 /* ---------------- Buttons & forms ---------------- */
@@ -286,7 +276,8 @@ legend {
 }
 .card.grow {
   flex: 1;
-  min-height: 0;
+  /* Đủ chỗ cho tiêu đề + vài nước đi; thấp hơn thì cột phụ cuộn. */
+  min-height: 140px;
   display: flex;
   flex-direction: column;
 }
@@ -487,6 +478,9 @@ legend {
   max-height: calc(100dvh - var(--header-h) - 32px);
   position: sticky;
   top: calc(var(--header-h) + 16px);
+  /* Màn thấp (vd. khung iframe trên portal): cột phụ cuộn riêng thay vì để nội dung tràn khỏi thẻ. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .actions {
   display: flex;
@@ -592,6 +586,11 @@ legend {
   overflow-y: auto;
   min-height: 80px;
   max-height: 360px;
+}
+/* Trong cột phụ bị giới hạn chiều cao: danh sách co lại và cuộn bên trong thẻ, không tràn ra ngoài. */
+.card.grow > .move-list {
+  flex: 1 1 auto;
+  min-height: 48px;
 }
 .move-list ol {
   list-style: none;
@@ -840,7 +839,9 @@ legend {
     grid-template-columns: minmax(0, 1fr);
   }
   .board-col {
-    width: min(100%, 560px);
+    /* Vừa cả chiều cao: bàn (tỉ lệ 414/460) + 2 thanh người chơi phải nằm gọn trong màn hình,
+       kể cả khi nhúng trong khung iframe thấp của portal. Không nhỏ hơn 280px. */
+    width: min(100%, 560px, max(280px, calc((100dvh - var(--header-h) - 140px) * 0.9)));
     margin: 0 auto;
     min-width: 0;
   }
@@ -861,7 +862,9 @@ legend {
   }
 }
 
-@media (max-width: 760px) {
+/* Menu đầy đủ (6 mục + tài khoản + ngôn ngữ) cần ~1100px; hẹp hơn thì gom vào nút ☰.
+   Khung iframe trên portal thường chỉ rộng 700–900px. */
+@media (max-width: 1100px) {
   .topbar .menu-toggle {
     display: inline-flex;
   }
@@ -880,6 +883,12 @@ legend {
   .nav.open {
     display: flex;
   }
+  .nav .lang-switch {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
   .main {
     padding: 12px;
   }
@@ -1052,6 +1061,13 @@ legend {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+}
+/* Tên dài không đẩy menu tràn khỏi header. */
+.nav-user-name {
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .nav-avatar {
   display: inline-grid;

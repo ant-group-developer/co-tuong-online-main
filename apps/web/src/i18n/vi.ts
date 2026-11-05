@@ -57,6 +57,7 @@ export const vi = {
     ranked: 'Xếp hạng',
     online: 'Phòng & xem trận',
     leaderboard: 'Bảng xếp hạng',
+    rules: 'Luật chơi',
     profile: 'Hồ sơ',
     signIn: 'Đăng nhập',
     activeRoom: 'Bạn đang ở phòng <b>{{roomId}}</b> · {{status}}',
@@ -64,7 +65,6 @@ export const vi = {
     backToRoom: 'Quay lại phòng',
   },
   roomStatus: { waiting: 'đang chờ đối thủ', ready: 'chờ hai bên sẵn sàng', playing: 'đang đấu' },
-  footer: { rules: 'Luật: xq-rules-v1 (giản lược, xem Hướng dẫn)', rulesLink: 'Luật & chính sách' },
   notConfigured: {
     title: 'Chế độ online chưa được cấu hình',
     message: 'Chưa có cấu hình Firebase (biến VITE_FIREBASE_*) hoặc chế độ emulator. Bạn vẫn có thể chơi với máy.',
