@@ -1,6 +1,8 @@
 /**
  * Đa ngôn ngữ (i18next + react-i18next).
- * - Ngôn ngữ: lựa chọn đã lưu (localStorage) > ngôn ngữ trình duyệt (vi* => vi, còn lại => en).
+ * - Ngôn ngữ: ?lang= trên URL (portal ANT Play nhúng iframe) > lựa chọn đã lưu (localStorage)
+ *   > ngôn ngữ trình duyệt (vi* => vi, còn lại => en).
+ * - Khi nhúng iframe, trang cha gửi { type: 'ant-play:locale', locale } để đổi ngôn ngữ ngay.
  * - Thêm ngôn ngữ: tạo file `xx.ts` kiểu `Messages` (cùng bộ khóa với vi.ts), thêm vào LANGS + resources.
  * - Ký hiệu nước đi theo ngôn ngữ: vi => kiểu Việt (P2-5), en => quốc tế WXF (C2=5).
  */
@@ -14,7 +16,18 @@ export type Lang = (typeof LANGS)[number];
 
 const STORAGE_KEY = 'xq.lang';
 
+const isLang = (value: unknown): value is Lang => (LANGS as readonly unknown[]).includes(value);
+
 function detect(): Lang {
+  const fromQuery = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('lang')?.toLowerCase() : null;
+  if (isLang(fromQuery)) {
+    try {
+      localStorage.setItem(STORAGE_KEY, fromQuery);
+    } catch {
+      /* localStorage bị chặn */
+    }
+    return fromQuery;
+  }
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved && (LANGS as readonly string[]).includes(saved)) return saved as Lang;
@@ -53,6 +66,15 @@ export function setLang(lang: Lang): void {
     /* bỏ qua */
   }
   void i18n.changeLanguage(lang);
+}
+
+// Portal ANT Play đổi ngôn ngữ khi game đang mở trong iframe.
+if (typeof window !== 'undefined' && window.parent !== window) {
+  window.addEventListener('message', (event) => {
+    if (event.source !== window.parent) return;
+    const data = event.data as { type?: unknown; locale?: unknown } | null;
+    if (data?.type === 'ant-play:locale' && isLang(data.locale) && data.locale !== i18n.language) setLang(data.locale);
+  });
 }
 
 export function currentLang(): Lang {
