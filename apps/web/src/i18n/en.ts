@@ -56,6 +56,7 @@ export const en: Messages = {
     ranked: 'Ranked',
     online: 'Rooms & watch',
     leaderboard: 'Leaderboard',
+    rules: 'Rules',
     profile: 'Profile',
     signIn: 'Sign in',
     activeRoom: 'You are in room <b>{{roomId}}</b> · {{status}}',
@@ -63,7 +64,6 @@ export const en: Messages = {
     backToRoom: 'Back to room',
   },
   roomStatus: { waiting: 'waiting for an opponent', ready: 'waiting for both players to be ready', playing: 'in progress' },
-  footer: { rules: 'Rules: xq-rules-v1 (simplified, see Rules)', rulesLink: 'Rules & policy' },
   notConfigured: {
     title: 'Online mode is not configured',
     message: 'Firebase is not configured (VITE_FIREBASE_* variables) and emulator mode is off. You can still play against the computer.',
