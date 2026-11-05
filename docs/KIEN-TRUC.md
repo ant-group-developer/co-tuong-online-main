@@ -65,6 +65,7 @@ Nguyên tắc:
 | `roomStats/{roomId}` | spectators (đếm theo UID, không tính người chơi), playersOnline | Functions (trigger) | như quyền đọc phòng |
 | `presence/{uid}/{connId}` | {at} | chính UID đó | user đã auth |
 | `userRooms/{uid}` | roomId, mode, at: phòng mà người đó đang **ngồi ghế** (waiting/ready/playing). Chỉ mục dẫn xuất, ghi sau mỗi commit phòng | Functions | chính UID đó |
+| `roomEmotes/{roomId}/{uid}` | e (wave/happy/thinking), at: biểu cảm vừa gửi trên bàn 3D | chính người đang ngồi ghế (≥1,5 giây/lần) | ai xem được phòng |
 | `mm/queue/{uid}`, `mm/assign/{uid}`, `mm/active/{uid}` | hàng chờ, kết quả ghép, lease rated | Functions | chỉ `assign` của chính mình |
 | `invites/{sha256}` | roomId, role, expiresAt, revoked (chỉ lưu **hash** của token) | Functions | không ai |
 | `roomInvites/{roomId}/{inviteId}` | role, expiresAt, revoked | Functions | chủ phòng |
@@ -83,7 +84,7 @@ Ghép trận dùng transaction trên node `mm`, nên tuần tự hóa mọi thao
 
 | Collection | Field chính | Ghi | Đọc |
 |---|---|---|---|
-| `publicProfiles/{uid}` | displayName (2–24, không `<>`), photoURL (https), **code** (ID người chơi = 6 ký tự đầu UID viết hoa, rules kiểm tra khớp UID), **isGuest** (rules kiểm tra khớp loại đăng nhập), createdAt, updatedAt | **chính chủ** (rules validate schema) | user đã auth |
+| `publicProfiles/{uid}` | displayName (2–24, không `<>`), photoURL (https), **code** (ID người chơi = 6 ký tự đầu UID viết hoa, rules kiểm tra khớp UID), **isGuest** (rules kiểm tra khớp loại đăng nhập), **avatar** (nhân vật 3D, 1 trong 9 giá trị), createdAt, updatedAt | **chính chủ** (rules validate schema) | user đã auth |
 | `playerStats/{uid}` | rating, peakRating, ratedGames, wins, losses, draws, friendly*, ratingVersion, lastRatedMatchId | Functions | user đã auth |
 | `leaderboard/{uid}` | uid, displayName, photoURL, rating, ratedGames, wins, losses, draws, winRate | Functions (chỉ khi ≥5 trận rated) | user đã auth |
 | `matches/{matchId}` | players + rating trước/sau, winner, reason, startFen, moves[], finalHash, finalVersion, rulesVersion, visibility, playerUids | Functions | public: user đã auth; private: 2 người chơi; chỉ `get` |

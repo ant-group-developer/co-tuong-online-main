@@ -58,6 +58,19 @@
       }
     },
 
+    "roomEmotes": {
+      "$roomId": {
+        ".read": "auth != null && (root.child('rooms').child($roomId).child('meta/visibility').val() === 'public' || root.child('rooms').child($roomId).child('members').child(auth.uid).exists())",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && (root.child('rooms').child($roomId).child('seats/host/uid').val() === auth.uid || root.child('rooms').child($roomId).child('seats/guest/uid').val() === auth.uid)",
+          ".validate": "newData.hasChildren(['e', 'at']) && newData.child('at').isNumber() && newData.child('at').val() <= now && (!data.exists() || now - data.child('at').val() >= 1500)",
+          "e": { ".validate": "newData.isString() && newData.val().matches(/^(wave|happy|thinking)$/)" },
+          "at": { ".validate": true },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
     "userRooms": {
       "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
     },

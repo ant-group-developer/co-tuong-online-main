@@ -6,10 +6,12 @@ import { useSearchParams } from 'react-router-dom';
 import { AiClient } from '../ai/client';
 import { infoOf, isAiLevel, levelName, loadRecords, newGameId, nextLevel, recordResult, thinkText, type Records } from '../ai/levels';
 import { AiLevelPicker, ColorPicker, Stars, useRecordText, type ColorChoice } from '../components/AiLevelPicker';
-import { Board } from '../components/Board';
+import { BoardView, ViewToggle } from '../components/BoardView';
 import { Modal, SoundControl } from '../components/common';
 import { MoveList, PlayerBar, ResultBanner } from '../components/GamePanels';
 import { fmtNumber, moveText } from '../i18n';
+import { useAuth } from '../lib/auth';
+import { AI_AVATAR, useViewMode, type EmoteId, type Mood, type SeatVisual } from '../lib/avatars';
 import { playSound } from '../lib/sound';
 
 const SAVE_KEY = 'xq.ai.v1';
@@ -57,6 +59,9 @@ export function AiPage() {
   const [switched, setSwitched] = useState(false);
   const [records, setRecords] = useState<Records>(loadRecords);
   const [picker, setPicker] = useState(false);
+  const [emotes, setEmotes] = useState<{ ai: SeatVisual['emote']; me: SeatVisual['emote'] }>({ ai: null, me: null });
+  const { avatar: myAvatar } = useAuth();
+  const [view] = useViewMode();
   const gameRef = useRef<Game>(new Game());
   const verRef = useRef(0);
   const aiRef = useRef<AiClient | null>(null);
@@ -300,9 +305,24 @@ export function AiPage() {
   const harder = nextLevel(level, 1);
   const easier = nextLevel(level, -1);
   const inProgress = !over && game.history.length > 0;
+  // Bàn 3D: nhân vật của từng ghế (máy mỗi mức một nhân vật) và nét mặt theo ván.
+  const moodOf = (s: Side): Mood => {
+    if (result) return result.result === 'draw' ? 'idle' : result.result === s ? 'happy' : 'sad';
+    return s === aiSide && thinking ? 'thinking' : 'idle';
+  };
+  const seat = (s: Side): SeatVisual => ({
+    avatar: s === aiSide ? AI_AVATAR[level] : myAvatar,
+    mood: moodOf(s),
+    emote: s === aiSide ? emotes.ai : emotes.me,
+  });
+  const onEmote = (e: EmoteId) => {
+    setEmotes((x) => ({ ...x, me: { id: e, at: Date.now() } }));
+    // Máy đáp lại lời chào / lời khen
+    if (e !== 'thinking') window.setTimeout(() => setEmotes((x) => ({ ...x, ai: { id: e, at: Date.now() } })), 800);
+  };
 
   return (
-    <div className="game-layout">
+    <div className={`game-layout${view === '3d' ? ' is-3d' : ''}`}>
       {picker && (
         <ChangeAiModal
           current={level}
@@ -316,7 +336,7 @@ export function AiPage() {
       )}
       <section className="board-col">
         <PlayerBar name={nameOf(top)} side={top} active={!over && game.sideToMove === top} note={top === aiSide && thinking ? t('panel.thinking') : undefined} />
-        <Board
+        <BoardView
           board={board}
           flipped={flipped}
           canSelect={canSelect}
@@ -326,6 +346,9 @@ export function AiPage() {
           checkSq={checkSq}
           disabled={!humanTurn}
           ariaLabel={t('board.vsAi')}
+          top={seat(top)}
+          bottom={seat(bottom)}
+          onEmote={onEmote}
         />
         <PlayerBar name={nameOf(bottom)} side={bottom} active={!over && game.sideToMove === bottom} note={bottom === aiSide && thinking ? t('panel.thinking') : undefined} />
       </section>
@@ -408,6 +431,7 @@ export function AiPage() {
             </button>
           </div>
           <SoundControl />
+          <ViewToggle />
         </div>
         <div className="card grow">
           <h2 className="h3">{t('panel.moves')}</h2>

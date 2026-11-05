@@ -49,6 +49,17 @@ Một số trình duyệt chặn cookie bên thứ ba (Safari, Chrome ở chế 
 Chơi với máy và chơi bằng tài khoản khách không bị ảnh hưởng.
 Muốn giới hạn lại chỉ vài domain: đổi `frame-ancestors *` thành `frame-ancestors https://domain-cua-ban.com`.
 
+## Bàn cờ 3D
+
+Nút **Kiểu bàn cờ: Bàn 2D / Bàn 3D** ở cột bên phải (chơi với máy và phòng online). Lựa chọn được lưu trên trình duyệt; mặc định 2D.
+- Thư phòng cổ, bàn gỗ có logo ANT GROUP giữa sông, quân là đĩa gỗ khắc chữ Hán. Hai nhân vật cổ trang ngồi đối diện,
+  tự tay cầm quân khi đi, chống cằm khi đang nghĩ, đổi nét mặt khi ăn quân / bị chiếu / thắng / thua.
+- 3 góc nhìn: Sau lưng, Tại bàn, Từ trên (kéo để xoay, cuộn để phóng to). Màn dọc (điện thoại) tự dùng góc riêng để bàn phủ gần hết chiều ngang.
+- Nhân vật: chọn ở **Hồ sơ → Nhân vật 3D** (lưu `publicProfiles/{uid}.avatar`, rules chỉ cho 9 giá trị: 6 cổ trang + Dân ANT, Sinh viên Bách Khoa, Sinh viên PTIT). Mặt tạc theo tỉ lệ người thật (có morph cười/buồn/há miệng, mắt chớp), tay có 5 ngón gập được. Khi chơi với máy, mỗi mức máy là một nhân vật.
+- Biểu cảm online (Chào / Hay lắm / Để nghĩ đã): RTDB `roomEmotes/{roomId}/{uid}`, chỉ người đang ngồi ghế mới ghi được, tối đa 1 lần / 1,5 giây.
+- Mọi thứ dựng bằng code three.js (`apps/web/src/three/scene.ts`), không dùng model hay ảnh ngoài. three.js nằm trong chunk riêng (~137 KB gzip), chỉ tải khi bật 3D.
+  Máy không có WebGL thì tự quay về bàn 2D. Muốn chơi bằng bàn phím: dùng bàn 2D.
+
 ## Đa ngôn ngữ
 
 Giao diện có **Tiếng Việt** và **English** (nút VI/EN trên thanh menu; lần đầu tự chọn theo ngôn ngữ trình duyệt, lựa chọn được lưu).

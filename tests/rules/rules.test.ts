@@ -148,6 +148,31 @@ describe('RTDB – presence & người xem', () => {
   });
 });
 
+describe('RTDB – biểu cảm trên bàn 3D', () => {
+  it('chỉ người đang ngồi ghế gửi được, đúng loại, không gửi dồn dập', async () => {
+    const guest = env.authenticatedContext('guest').database();
+    await assertSucceeds(set(ref(guest, 'roomEmotes/pub001/guest'), { e: 'wave', at: serverTimestamp() }));
+    await assertFails(set(ref(guest, 'roomEmotes/pub001/guest'), { e: 'happy', at: serverTimestamp() })); // chưa đủ 1,5 giây
+    await assertFails(set(ref(guest, 'roomEmotes/pub001/owner'), { e: 'wave', at: serverTimestamp() })); // ghi hộ người khác
+    const owner = env.authenticatedContext('owner').database();
+    await assertFails(set(ref(owner, 'roomEmotes/pub001/owner'), { e: 'rude', at: serverTimestamp() }));
+    await assertFails(set(ref(owner, 'roomEmotes/pub001/owner'), { e: 'wave', at: serverTimestamp(), x: 1 }));
+    await assertFails(set(ref(owner, 'roomEmotes/pub001/owner'), { e: 'wave', at: Date.now() + 10_000_000 }));
+    await assertSucceeds(set(ref(owner, 'roomEmotes/pub001/owner'), { e: 'thinking', at: serverTimestamp() }));
+    // Khán giả / người lạ không gửi được
+    const stranger = env.authenticatedContext('stranger').database();
+    await assertFails(set(ref(stranger, 'roomEmotes/pub001/stranger'), { e: 'wave', at: serverTimestamp() }));
+  });
+
+  it('đọc theo quyền xem phòng', async () => {
+    const stranger = env.authenticatedContext('stranger').database();
+    await assertSucceeds(get(ref(stranger, 'roomEmotes/pub001')));
+    await assertFails(get(ref(stranger, 'roomEmotes/prv001')));
+    await assertSucceeds(get(ref(env.authenticatedContext('viewer').database(), 'roomEmotes/prv001')));
+    await assertFails(get(ref(env.unauthenticatedContext().database(), 'roomEmotes/pub001')));
+  });
+});
+
 describe('Firestore', () => {
   it('hồ sơ công khai: chỉ chủ sở hữu ghi, đúng schema', async () => {
     const bob = env.authenticatedContext('bob').firestore();
@@ -158,6 +183,14 @@ describe('Firestore', () => {
     await assertFails(updateDoc(doc(bob, 'publicProfiles/bob'), { rating: 3000, updatedAt: fsTs() }));
     await assertFails(updateDoc(doc(bob, 'publicProfiles/bob'), { displayName: 'A', updatedAt: fsTs() }));
     await assertSucceeds(getDoc(doc(bob, 'publicProfiles/alice')));
+  });
+
+  it('nhân vật 3D: chỉ được chọn trong danh sách có sẵn', async () => {
+    const bob = env.authenticatedContext('bob').firestore();
+    await assertSucceeds(setDoc(doc(bob, 'publicProfiles/bob'), { displayName: 'Bob', avatar: 'laosu', createdAt: fsTs(), updatedAt: fsTs() }));
+    await assertSucceeds(updateDoc(doc(bob, 'publicProfiles/bob'), { avatar: 'hiepnu', updatedAt: fsTs() }));
+    await assertFails(updateDoc(doc(bob, 'publicProfiles/bob'), { avatar: 'lan', updatedAt: fsTs() }));
+    await assertFails(updateDoc(doc(bob, 'publicProfiles/bob'), { avatar: 3, updatedAt: fsTs() }));
   });
 
   it('ID khách: phải là 6 ký tự đầu UID (viết hoa); cờ isGuest phải khớp loại đăng nhập thật', async () => {

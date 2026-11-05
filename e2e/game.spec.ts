@@ -214,3 +214,61 @@ test('đa ngôn ngữ: đổi EN/VI, nhớ lựa chọn, ký hiệu nước đi 
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByRole('link', { name: 'Play computer' })).toBeVisible();
 });
+
+test('bàn 3D: bật 3D, đổi góc nhìn, gửi biểu cảm, đi quân bằng chuột trên cảnh 3D; chọn nhân vật trong hồ sơ; tắt về 2D', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 820 });
+  await page.goto('/ai');
+  await page.locator('input[value="super_easy"]').check();
+  await page.getByTestId('ai-start').click();
+  await page.getByTestId('view-3d').click();
+  await expect(page.getByTestId('board3d')).toBeVisible();
+  await expect(page.getByTestId('board3d').locator('canvas')).toBeVisible();
+  // Góc nhìn từ trên xuống: chạm quân pháo phải (h2) rồi chạm e2 ngay trên cảnh 3D
+  await page.getByTestId('cam-top').click();
+  await expect(page.getByTestId('cam-top')).toHaveAttribute('aria-pressed', 'true');
+  // Chiếu tọa độ ô lên màn hình bằng chính camera của cảnh (hook kiểm thử, chỉ có ở bản dev/emulator).
+  const screenOf = (col: number, row: number) =>
+    page.evaluate(([c, r]) => (window as unknown as { __xq3d?: { screenOf: (c: number, r: number) => [number, number] } }).__xq3d?.screenOf(c, r) ?? null, [col, row]);
+  // Đợi camera bay tới vị trí mới và đứng yên
+  await expect
+    .poll(
+      async () => {
+        const a = await screenOf(4, 7);
+        await page.waitForTimeout(400);
+        const b = await screenOf(4, 7);
+        return !!a && !!b && Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.5;
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
+  const tap = async (col: number, row: number) => {
+    const pt = await screenOf(col, row);
+    expect(pt).toBeTruthy();
+    await page.mouse.click(pt![0], pt![1]);
+    await page.waitForTimeout(300);
+  };
+  await tap(7, 7);
+  await tap(4, 7);
+  await expect(page.locator('.move-list .mv.red').first()).toHaveText('P2-5', { timeout: 15_000 });
+  await expect(page.locator('.move-list .mv.black')).toHaveCount(1, { timeout: 30_000 });
+  // Quân đi theo đúng đầu ngón tay nhân vật (không lệch rồi nhảy ô khi đặt xuống)
+  type Hook = { busy: () => boolean; gripErr: () => number };
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __xq3d: Hook }).__xq3d.busy()), { timeout: 120_000 }).toBe(false);
+  expect(await page.evaluate(() => (window as unknown as { __xq3d: Hook }).__xq3d.gripErr())).toBeLessThan(0.2);
+  await page.getByTestId('emote-wave').click();
+  // Tắt về 2D: bàn 2D hiện đúng thế cờ
+  await page.getByTestId('view-2d-inline').click();
+  await expect(page.locator('.piece[data-piece-sq="e2"]')).toHaveCount(1);
+
+  // Chọn nhân vật, lưu vào hồ sơ, tải lại vẫn giữ
+  await page.goto('/profile');
+  await page.getByTestId('avatar-daosi').click();
+  await page.getByTestId('avatar-save').click();
+  await expect(page.getByTestId('avatar-save')).toHaveText('Đang dùng Đạo sĩ');
+  await expect(page.getByTestId('avatar-save')).toBeDisabled();
+  await page.reload();
+  await expect(page.getByTestId('avatar-daosi')).toHaveAttribute('aria-checked', 'true');
+  expect(errors).toEqual([]);
+});
