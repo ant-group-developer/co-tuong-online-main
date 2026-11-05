@@ -551,7 +551,6 @@ export const vi = {
     moodLabel: 'Xem thử nét mặt',
     use: 'Dùng {{name}}',
     inUse: 'Đang dùng',
-    inUseLong: 'Đang dùng {{name}}',
     saved: 'Đã chọn {{name}}',
     previewOf: 'Xem trước nhân vật {{name}}',
     moods: { idle: 'Bình thường', thinking: 'Suy nghĩ', happy: 'Vui', sad: 'Buồn', surprised: 'Ngạc nhiên', wave: 'Vẫy chào' },

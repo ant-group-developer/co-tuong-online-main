@@ -550,7 +550,6 @@ export const en: Messages = {
     moodLabel: 'Try a facial expression',
     use: 'Use {{name}}',
     inUse: 'In use',
-    inUseLong: 'Using {{name}}',
     saved: '{{name}} selected',
     previewOf: 'Preview of {{name}}',
     moods: { idle: 'Calm', thinking: 'Thinking', happy: 'Happy', sad: 'Sad', surprised: 'Surprised', wave: 'Waving' },
