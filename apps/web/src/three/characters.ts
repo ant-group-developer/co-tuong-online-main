@@ -714,8 +714,13 @@ export interface Character {
   setMood(m: Mood, dur: number, clock: number): void;
   setAuto(m: Mood): void;
   lookAt(w: V3): void;
-  /** Đưa điểm kẹp của tay phải tới w (null: thả về tư thế nghỉ). */
-  reach(w: V3 | null): void;
+  /**
+   * Đưa điểm kẹp (giữa đầu ngón cái và ngón trỏ) của tay phải tới đúng w; null: thả về tư thế nghỉ.
+   * tight: bám theo w ngay trong khung hình (khi đang cầm quân), không làm mượt.
+   * curl: độ gập ngón (0.3 xòe để chuẩn bị nhặt, 0.7 kẹp chặt).
+   * leanFor: nghiêng người sẵn đủ để với tới cả điểm này (đích sắp tới khi đang mang quân).
+   */
+  reach(w: V3 | null, opts?: { tight?: boolean; curl?: number; leanFor?: V3 }): void;
   /** Vị trí điểm kẹp quân của tay phải (thế giới). */
   handGrip(out: V3): V3;
   setUpperVisible(v: boolean): void;
@@ -777,8 +782,18 @@ interface Arm {
   cur: V3;
   curl: number;
   override: V3 | null;
+  tight: boolean;
+  holdCurl: number;
+  leanFor: V3 | null;
+  /** cổ tay - điểm kẹp (hệ tọa độ thân), đo lại mỗi khung để điểm kẹp tới đúng đích */
+  off: V3 | null;
 }
 
+/** Nghiêng tối đa (rad) và độ nhổm khỏi ghế khi với quân ở xa. */
+const LEAN_MAX = 1.0;
+const RISE_Y = 1.4;
+const RISE_Z = 0.8;
+const riseOf = (lean: number) => smooth(0.5, 1.0, lean);
 const L1 = 6.2; // bắp tay
 const L2 = 5.4; // cẳng tay (tới cổ tay)
 
@@ -1127,7 +1142,7 @@ export function buildCharacter(id: AvatarId, bt: number): Character {
     body.add(up, fo, elbow, hand.group);
     if (cuff) body.add(cuff);
     if (drape) body.add(drape);
-    arms[k] = { up, fo, elbow, cuff, drape, hand, cur: v3(k === 'R' ? -2.8 : 2.8, 0.6, 3.6), curl: 0.5, override: null };
+    arms[k] = { up, fo, elbow, cuff, drape, hand, cur: v3(k === 'R' ? -2.8 : 2.8, 0.6, 3.6), curl: 0.5, override: null, tight: false, holdCurl: 0.62, leanFor: null, off: null };
   }
   const wideSleeve = spec.sleeve === 'wide';
 
@@ -1190,8 +1205,19 @@ export function buildCharacter(id: AvatarId, bt: number): Character {
     lookAt(w) {
       st.look.copy(w);
     },
-    reach(w) {
-      arms.R.override = w ? w.clone() : null;
+    reach(w, opts) {
+      const a = arms.R;
+      if (!w) {
+        a.override = null;
+        a.off = null;
+        a.tight = false;
+        a.leanFor = null;
+        return;
+      }
+      a.override = w.clone();
+      a.tight = !!opts?.tight;
+      a.holdCurl = opts?.curl ?? 0.62;
+      a.leanFor = opts?.leanFor ? opts.leanFor.clone() : null;
     },
     handGrip(out) {
       return arms.R.hand.group.localToWorld(out.copy(arms.R.hand.grip));
@@ -1264,6 +1290,12 @@ export function buildCharacter(id: AvatarId, bt: number): Character {
 
       // nghiêng người khi với xa
       let need = 0;
+      // vai (hệ thân) khi thân trên nghiêng một góc th quanh hông
+      const shoulderAt = (sh: V3, th: number, out: V3): V3 => {
+        const r = riseOf(th);
+        const y = 2.2 + sh.y;
+        return out.set(sh.x, -2.2 + r * RISE_Y + y * Math.cos(th) - sh.z * Math.sin(th), r * RISE_Z + y * Math.sin(th) + sh.z * Math.cos(th));
+      };
       const wristGoal = (k: 'R' | 'L'): V3 | null => {
         const a = arms[k];
         if (!a.override) return null;
@@ -1272,32 +1304,38 @@ export function buildCharacter(id: AvatarId, bt: number): Character {
         const dh = v3(tgt.x - S.x, 0, tgt.z - S.z);
         if (dh.lengthSq() < 1e-4) dh.set(0, 0, 1);
         dh.normalize();
-        // điểm kẹp ở đầu ngón: cổ tay lùi lại và cao hơn một chút
-        return tgt.addScaledVector(dh, -2.1).add(v3(0, 0.65, 0));
+        // lần đầu: ước lượng (cổ tay lùi lại và cao hơn đầu ngón); sau đó dùng độ lệch đo được
+        if (!a.off) a.off = dh.multiplyScalar(-2.1).add(v3(0, 0.65, 0));
+        return tgt.add(a.off);
       };
+      // Tìm góc nghiêng nhỏ nhất để cổ tay với tới đích (rất xa thì nhổm khỏi ghế), thay vì tăng dần theo phần thiếu.
+      const goals: Array<[V3, V3]> = [];
       for (const k of ['R', 'L'] as const) {
         const g = wristGoal(k);
         if (!g) continue;
-        const sl = body.worldToLocal(U.localToWorld(shoulders[k].clone()));
-        need = Math.max(need, sl.distanceTo(g) - (L1 + L2) * 0.96);
+        goals.push([shoulders[k], g]);
+        const lf = arms[k].leanFor;
+        if (lf && arms[k].off) goals.push([shoulders[k], body.worldToLocal(lf.clone()).add(arms[k].off!)]);
       }
-      st.leanExtra = damp(st.leanExtra, clamp(need / 7, 0, 0.62), 5, dt);
-      upper.rotation.x = F.lean + st.leanExtra + Math.sin(t * 1.6) * 0.008;
+      if (goals.length) {
+        need = 1;
+        const reachMax = (L1 + L2) * 0.97;
+        for (let th = F.lean; th <= LEAN_MAX + 1e-6; th += 0.02) {
+          const ok = goals.every(([sh, g]) => shoulderAt(sh, th, tmp).distanceTo(g) <= reachMax);
+          need = th - F.lean;
+          if (ok) break;
+        }
+      }
+      st.leanExtra = damp(st.leanExtra, need, arms.R.tight ? 12 : 6, dt);
+      const lean = F.lean + st.leanExtra;
+      const r = riseOf(lean);
+      upper.rotation.x = lean + Math.sin(t * 1.6) * 0.008;
+      upper.position.set(0, -2.2 + r * RISE_Y, r * RISE_Z);
       U.position.y = 2.2 + Math.sin(t * 1.6) * 0.05;
       upper.updateMatrixWorld(true);
 
-      for (const k of ['R', 'L'] as const) {
+      const pose = (k: 'R' | 'L'): V3 => {
         const a = arms[k];
-        const wg = wristGoal(k);
-        let goal: V3;
-        let curl: number;
-        if (wg) {
-          goal = wg;
-          curl = 0.62;
-        } else [goal, curl] = restHand(k, t);
-        a.cur.lerp(goal, kf(a.override ? 9 : 6, dt));
-        a.curl = damp(a.curl, curl, 8, dt);
-        a.hand.setCurl(a.curl);
         const S = body.worldToLocal(U.localToWorld(shoulders[k].clone()));
         const s = k === 'R' ? -1 : 1;
         // khuỷu tay buông xuống cạnh sườn (không chĩa ra sau)
@@ -1333,6 +1371,34 @@ export function buildCharacter(id: AvatarId, bt: number): Character {
           a.drape.scale.set(1, h, E.distanceTo(W) * 0.62);
           a.drape.position.set(mid.x, mid.y - h / 2 - 0.2, mid.z);
           a.drape.quaternion.setFromUnitVectors(ZAX, hor);
+        }
+        return W;
+      };
+      for (const k of ['R', 'L'] as const) {
+        const a = arms[k];
+        const wg = wristGoal(k);
+        let goal: V3;
+        let curl: number;
+        if (wg) {
+          goal = wg;
+          curl = a.holdCurl;
+        } else [goal, curl] = restHand(k, t);
+        if (wg && a.tight) a.cur.copy(goal);
+        else a.cur.lerp(goal, kf(a.override ? 9 : 6, dt));
+        a.curl = damp(a.curl, curl, a.tight ? 14 : 8, dt);
+        a.hand.setCurl(a.curl);
+        let W = pose(k);
+        if (a.override && a.off) {
+          // đo lại cổ tay - điểm kẹp; khi bám chặt thì giải lại ngay để đầu ngón trùng quân trong khung này
+          const tgtL = body.worldToLocal(a.override.clone());
+          for (let it = 0; it < (a.tight ? 2 : 1); it++) {
+            a.hand.group.updateWorldMatrix(true, false);
+            const gripL = body.worldToLocal(a.hand.group.localToWorld(a.hand.grip.clone()));
+            a.off.lerp(W.clone().sub(gripL), a.tight ? 1 : 0.5);
+            if (!a.tight) break;
+            a.cur.copy(tgtL).add(a.off);
+            W = pose(k);
+          }
         }
       }
     },

@@ -66,7 +66,7 @@ export default function Board3D(props: Board3DProps) {
     sceneRef.current = scene;
     // Hook cho E2E (chỉ bản dev/emulator): chiếu ô lên màn hình để bấm đúng chỗ trên cảnh 3D.
     const testHook = import.meta.env.DEV || import.meta.env.MODE === 'emulator';
-    if (testHook) (window as unknown as { __xq3d?: unknown }).__xq3d = { screenOf: (c: number, r: number) => scene.screenOf(c, r) };
+    if (testHook) (window as unknown as { __xq3d?: unknown }).__xq3d = { screenOf: (c: number, r: number) => scene.screenOf(c, r), gripErr: () => scene.gripErr, busy: () => scene.busy };
     return () => {
       sceneRef.current = null;
       if (testHook) delete (window as unknown as { __xq3d?: unknown }).__xq3d;

@@ -253,6 +253,10 @@ test('bàn 3D: bật 3D, đổi góc nhìn, gửi biểu cảm, đi quân bằng
   await tap(4, 7);
   await expect(page.locator('.move-list .mv.red').first()).toHaveText('P2-5', { timeout: 15_000 });
   await expect(page.locator('.move-list .mv.black')).toHaveCount(1, { timeout: 30_000 });
+  // Quân đi theo đúng đầu ngón tay nhân vật (không lệch rồi nhảy ô khi đặt xuống)
+  type Hook = { busy: () => boolean; gripErr: () => number };
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __xq3d: Hook }).__xq3d.busy()), { timeout: 120_000 }).toBe(false);
+  expect(await page.evaluate(() => (window as unknown as { __xq3d: Hook }).__xq3d.gripErr())).toBeLessThan(0.2);
   await page.getByTestId('emote-wave').click();
   // Tắt về 2D: bàn 2D hiện đúng thế cờ
   await page.getByTestId('view-2d-inline').click();

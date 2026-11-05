@@ -22,6 +22,8 @@ const SEAT_Z = 11.6;
 const FLOOR_Y = -16;
 const PI = Math.PI;
 const PIECE_H = 0.24;
+/** Đầu ngón kẹp quân ở lưng chừng thành quân. */
+const GRIP_Y = PIECE_H * 0.6;
 const GLYPH_FONT = 'KaiTi, STKaiti, "BiauKai", "DFKai-SB", "Kaiti TC", "Noto Serif CJK TC", "Noto Serif TC", "Songti TC", "PMingLiU", "Microsoft JhengHei", "PingFang TC", "SimSun", serif';
 
 const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -29,6 +31,10 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const kf = (k: number, dt: number) => 1 - Math.exp(-k * dt);
 const damp = (cur: number, target: number, k: number, dt: number) => cur + (target - cur) * kf(k, dt);
 const ease = (k: number) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+const smooth = (a: number, b: number, x: number) => {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
 const UP = new THREE.Vector3(0, 1, 0);
 
 function rng(seed: number): () => number {
@@ -525,8 +531,10 @@ class Stage {
     this.raf = requestAnimationFrame(this.loop);
   }
 
-  onFrame(f: FrameFn): void {
-    this.fns.push(f);
+  /** first: chạy trước các hàm khác trong khung (đặt đích cho tay trước khi nhân vật cập nhật). */
+  onFrame(f: FrameFn, first = false): void {
+    if (first) this.fns.unshift(f);
+    else this.fns.push(f);
   }
   wait(sec: number): Promise<void> {
     return new Promise((res) => this.waiters.push({ at: this.t + sec, res }));
@@ -622,6 +630,8 @@ export class BoardScene {
   private disposed = false;
   private onTap: (sq: number) => void;
   private listeners = new AbortController();
+  /** Sai lệch lớn nhất giữa đầu ngón và quân trong lần cầm quân gần nhất (kiểm thử). */
+  gripErr = 0;
 
   constructor(canvas: HTMLCanvasElement, opts: BoardSceneOptions) {
     const small = Math.min(window.innerWidth, window.innerHeight) < 600;
@@ -808,6 +818,11 @@ export class BoardScene {
     }
   }
 
+  /**
+   * Hoạt cảnh đi quân như người thật: đưa tay tới quân, xòe ngón hạ xuống, kẹp, nhấc lên một chút, lướt sang ô đích,
+   * đặt xuống đúng giao điểm, thả ngón rồi rút tay. Ăn quân thì nhặt quân bị ăn ra cạnh bàn trước.
+   * Quân luôn đi đúng đường từ ô đi tới ô đến; tay bám theo quân (không phải ngược lại), nên không bị lệch ô.
+   */
   private async animate(cur: number[], next: number[], m: MoveRef, check: SideName | null): Promise<void> {
     const g = this.pieces.get(m.from);
     if (!g) {
@@ -817,69 +832,97 @@ export class BoardScene {
     const mover = (g.userData as PieceData).side;
     const seat = this.seatOfSide(mover);
     const ch = this.chars[seat];
-    const fast = seat === 'bottom' ? 0.6 : 1;
+    const fast = seat === 'bottom' ? 0.7 : 1;
     const victim = this.pieces.get(m.to) ?? null;
-    const stage = this.stage;
-    const hand = v3();
-    ch.lookAt(this.sqPos(m.from));
-    ch.reach(this.sqPos(m.from, BT + PIECE_H + 1.2));
-    await stage.wait(0.45 * fast);
-    ch.reach(this.sqPos(m.from, BT + PIECE_H * 0.6));
-    await stage.wait(0.22 * fast);
-    (g.userData as PieceData).carried = true;
-    const fromP = this.sqPos(m.from, BT + PIECE_H * 0.6);
-    const toP = this.sqPos(m.to, BT + PIECE_H * 0.6);
-    const dur = 0.55 * fast;
-    const t0 = stage.t;
-    ch.lookAt(this.sqPos(m.to));
-    await new Promise<void>((res) => {
-      const fn: FrameFn = () => {
-        const k = clamp((stage.t - t0) / dur, 0, 1);
-        const e = ease(k);
-        const p = fromP.clone().lerp(toP, e);
-        p.y += Math.sin(PI * e) * 1.1;
-        ch.reach(p);
-        ch.handGrip(hand);
-        g.position.set(hand.x, hand.y - PIECE_H * 0.6, hand.z);
-        if (k >= 1) {
-          fn.dead = true;
-          res();
-        }
-      };
-      stage.onFrame(fn);
-    });
+    const at = (p: V3, h = 0) => v3(p.x, p.y + GRIP_Y + h, p.z);
+    const toP = this.sqPos(m.to);
+    this.gripErr = 0;
+
     if (victim) {
       const vs = (victim.userData as PieceData).side;
       const slot = this.pileSlot(vs, this.pileCount(vs));
+      ch.lookAt(toP);
+      await this.pick(ch, victim.position, fast);
       this.pieces.delete(m.to);
       this.piecesRoot.remove(victim);
       this.pile.add(victim);
       (victim.userData as PieceData).carried = true;
-      this.arc(victim, victim.position.clone(), slot, 0.6, 1.4);
+      await this.carry(ch, victim, victim.position.clone(), slot, fast);
+      ch.reach(at(slot), { curl: 0.3 });
+      await this.stage.wait(0.1 * fast);
     }
-    await stage.wait(0.1 * fast);
-    ch.reach(this.sqPos(m.to, BT + PIECE_H + 1.4));
-    await stage.wait(0.08);
+
+    ch.lookAt(g.position);
+    await this.pick(ch, g.position, fast);
+    (g.userData as PieceData).carried = true;
+    ch.lookAt(toP);
+    await this.carry(ch, g, g.position.clone(), toP, fast);
     (g.userData as PieceData).carried = false;
-    g.position.copy(this.sqPos(m.to));
+    g.position.copy(toP);
     this.pieces.delete(m.from);
     this.pieces.set(m.to, g);
     this.board = next.slice();
     this.reactTo(mover, victim ? Math.abs(cur[m.to]) : 0, check);
-    await stage.wait(0.2 * fast);
+    // thả ngón, nhấc tay khỏi quân rồi rút về
+    ch.reach(at(toP), { curl: 0.3 });
+    await this.stage.wait(0.12 * fast);
+    ch.reach(at(toP, 0.9), { curl: 0.35 });
+    await this.stage.wait(0.16 * fast);
     ch.reach(null);
     ch.lookAt(v3(0, BT, 0));
   }
-  private arc(obj: THREE.Object3D, from: V3, to: V3, dur: number, h: number): void {
+  /** Đưa tay tới phía trên quân ở p (đáy quân), xòe ngón hạ xuống rồi kẹp lại. */
+  private async pick(ch: Character, p: V3, fast: number): Promise<void> {
+    const over = v3(p.x, p.y + GRIP_Y + 0.8, p.z);
+    const grip = v3(p.x, p.y + GRIP_Y, p.z);
+    await this.handTo(ch, over, 0.3, 0.9 * fast, 0.25);
+    await this.handTo(ch, grip, 0.3, 0.4 * fast, 0.05);
+    ch.reach(grip, { curl: 0.72 });
+    await this.stage.wait(0.1 * fast);
+  }
+  /** Đưa điểm kẹp tới p, chờ tới nơi (sai số tol) nhưng không quá max giây. */
+  private handTo(ch: Character, p: V3, curl: number, max: number, tol: number): Promise<void> {
+    ch.reach(p, { curl });
+    const hand = v3();
     const t0 = this.stage.t;
-    const fn: FrameFn = () => {
-      const k = clamp((this.stage.t - t0) / dur, 0, 1);
-      const e = ease(k);
-      obj.position.lerpVectors(from, to, e);
-      obj.position.y += Math.sin(PI * e) * h;
-      if (k >= 1) fn.dead = true;
-    };
-    this.stage.onFrame(fn);
+    return new Promise((res) => {
+      const fn: FrameFn = () => {
+        if (this.disposed || this.stage.t - t0 >= max || ch.handGrip(hand).distanceTo(p) < tol) {
+          fn.dead = true;
+          res();
+        }
+      };
+      this.stage.onFrame(fn);
+    });
+  }
+  /** Cầm obj đi từ a tới b (vị trí đáy quân): nhấc lên thấp, lướt, hạ xuống êm; tay bám đúng quân từng khung. */
+  private carry(ch: Character, obj: THREE.Object3D, a: V3, b: V3, fast: number): Promise<void> {
+    const dist = Math.hypot(b.x - a.x, b.z - a.z);
+    const dur = (0.3 + Math.min(dist, 10) * 0.055) * fast;
+    const lift = 0.4 + Math.min(dist, 10) * 0.03;
+    const t0 = this.stage.t;
+    const want = v3();
+    const hand = v3();
+    const end = v3(b.x, b.y + GRIP_Y, b.z);
+    let started = false;
+    return new Promise((res) => {
+      const fn: FrameFn = () => {
+        // sai lệch tay - quân của khung trước (nhân vật đã cập nhật xong)
+        if (started) this.gripErr = Math.max(this.gripErr, ch.handGrip(hand).distanceTo(want));
+        started = true;
+        const k = clamp((this.stage.t - t0) / dur, 0, 1);
+        const e = ease(k);
+        obj.position.lerpVectors(a, b, e);
+        obj.position.y += lift * smooth(0, 0.3, k) * smooth(0, 0.3, 1 - k);
+        want.set(obj.position.x, obj.position.y + GRIP_Y, obj.position.z);
+        ch.reach(want, { tight: true, curl: 0.72, leanFor: end });
+        if (k >= 1 || this.disposed) {
+          fn.dead = true;
+          res();
+        }
+      };
+      this.stage.onFrame(fn, true);
+    });
   }
   /** Nét mặt sau mỗi nước: bị ăn quân lớn thì buồn, bị chiếu thì giật mình, người ăn quân thì vui. */
   private reactTo(mover: SideName, capturedType: number, check: SideName | null): void {
