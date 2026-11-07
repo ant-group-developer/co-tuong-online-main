@@ -428,6 +428,8 @@ legend {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
   gap: 32px;
+  max-width: 900px;
+  margin: 0 auto;
   align-items: center;
   padding: 16px 0 32px;
 }
@@ -440,16 +442,21 @@ legend {
   background: #fff;
   padding: 6px;
 }
+.hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
 .hero-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin: 1.2rem 0;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: min(100%, 320px);
+  margin: 1.4rem 0 0;
 }
-.feature-list {
-  padding-left: 1.1rem;
-  color: var(--muted);
-  line-height: 1.7;
+.hero-actions .btn {
+  width: 100%;
 }
 .hero-board .board {
   width: 100%;
@@ -638,12 +645,6 @@ legend {
 }
 
 /* ---------------- AI setup ---------------- */
-.level-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 8px;
-}
-.level-option,
 .chip {
   flex-direction: row;
   align-items: flex-start;
@@ -656,15 +657,6 @@ legend {
   color: var(--text);
   margin: 0;
 }
-.level-option {
-  display: grid;
-  grid-template-columns: auto 1fr;
-}
-.level-option small {
-  grid-column: 2;
-  color: var(--muted);
-}
-.level-option.checked,
 .chip.checked {
   border-color: #a6e24b;
   background: rgba(119, 179, 0, 0.18);
@@ -1114,17 +1106,20 @@ legend {
 
 /* ---------------- Chọn máy ---------------- */
 .level-grid {
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 .level-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
   margin: 0;
-  padding: 14px 16px;
+  padding: 18px 12px 16px;
+  text-align: center;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--panel);
@@ -1140,29 +1135,44 @@ legend {
   background: rgba(119, 179, 0, 0.16);
   box-shadow: 0 0 0 1px rgba(166, 226, 75, 0.45);
 }
+/* Radio ẩn (vẫn dùng bàn phím được): trạng thái chọn thể hiện bằng viền thẻ. */
 .level-card input[type='radio'] {
   position: absolute;
-  top: 16px;
-  right: 14px;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
-.level-card-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-right: 24px;
+.level-card:has(input:focus-visible) {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
-.level-card-head strong {
-  font-size: 1.05rem;
+.level-num {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f6e4b8, #c99a52);
+  border: 2px solid #f6e4b8;
+  color: #3a240c;
+  font-weight: 800;
+  font-size: 1.25rem;
+}
+.level-card.checked .level-num {
+  border-color: #a6e24b;
+  box-shadow: 0 0 0 2px rgba(166, 226, 75, 0.45);
+}
+.level-name {
+  font-size: 1.08rem;
   color: var(--paper-strong);
 }
-.level-tagline {
-  font-size: 0.88rem;
-  line-height: 1.45;
+.level-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
-.level-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.level-rec {
   font-size: 0.78rem;
   color: var(--muted);
 }
@@ -1207,27 +1217,33 @@ legend {
   border: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.2);
 }
-@media (max-width: 560px) {
-  /* Hộp đổi máy trên điện thoại: thẻ gọn 2 cột để thấy ngay nút bấm */
-  .modal .level-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+@media (max-width: 640px) {
+  .level-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
+  .level-card {
+    padding: 14px 10px 12px;
+  }
+  /* Thẻ hẹp: nhãn nằm dưới sao thay vì ở góc (tránh đè lên số mức) */
+  .level-badge {
+    position: static;
+  }
+}
+@media (max-width: 560px) {
+  /* Hộp đổi máy trên điện thoại: thẻ gọn để thấy ngay nút bấm */
   .modal .level-card {
-    padding: 10px 12px;
+    min-height: 0;
+    padding: 10px 8px;
     gap: 4px;
   }
-  .modal .level-card .level-tagline,
-  .modal .level-card .level-meta,
-  .modal .level-card-head .badge:not(.ok) {
+  .modal .level-num {
+    width: 34px;
+    height: 34px;
+    font-size: 1rem;
+  }
+  .modal .level-badge:not(.ok) {
     display: none;
-  }
-  .modal .level-card-head strong {
-    font-size: 0.95rem;
-  }
-  .modal .level-card input[type='radio'] {
-    top: 12px;
-    right: 10px;
   }
   .modal.wide {
     padding: 1rem;
@@ -1263,28 +1279,6 @@ legend {
   .lang-switch {
     align-self: flex-start;
     margin: 8px 0 0;
-  }
-}
-
-/* ---------------- Mô tả mức máy ---------------- */
-.level-desc {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 0.86rem;
-  line-height: 1.45;
-}
-.level-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--gold);
-  opacity: 0.85;
-}
-@media (max-width: 560px) {
-  .modal .level-card .level-desc {
-    display: none;
   }
 }
 

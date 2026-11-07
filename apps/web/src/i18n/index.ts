@@ -1,7 +1,7 @@
 /**
  * Đa ngôn ngữ (i18next + react-i18next).
  * - Ngôn ngữ: ?lang= trên URL (portal ANT Play nhúng iframe) > lựa chọn đã lưu (localStorage)
- *   > ngôn ngữ trình duyệt (vi* => vi, còn lại => en).
+ *   > mặc định tiếng Việt (không phụ thuộc ngôn ngữ trình duyệt).
  * - Khi nhúng iframe, trang cha gửi { type: 'ant-play:locale', locale } để đổi ngôn ngữ ngay.
  * - Thêm ngôn ngữ: tạo file `xx.ts` kiểu `Messages` (cùng bộ khóa với vi.ts), thêm vào LANGS + resources.
  * - Ký hiệu nước đi theo ngôn ngữ: vi => kiểu Việt (P2-5), en => quốc tế WXF (C2=5).
@@ -34,8 +34,7 @@ function detect(): Lang {
   } catch {
     /* localStorage bị chặn */
   }
-  const nav = typeof navigator !== 'undefined' ? navigator.languages?.[0] ?? navigator.language ?? '' : '';
-  return nav.toLowerCase().startsWith('vi') ? 'vi' : 'en';
+  return 'vi'; // Mặc định tiếng Việt, không dò ngôn ngữ trình duyệt.
 }
 
 function applyDocument(lang: string) {
@@ -85,10 +84,6 @@ const LOCALE: Record<Lang, string> = { vi: 'vi-VN', en: 'en-GB' };
 
 export function fmtDateTime(ts: number): string {
   return new Date(ts).toLocaleString(LOCALE[currentLang()]);
-}
-
-export function fmtNumber(n: number, digits?: number): string {
-  return n.toLocaleString(LOCALE[currentLang()], digits === undefined ? undefined : { maximumFractionDigits: digits });
 }
 
 /** Ký hiệu nước đi theo ngôn ngữ hiện tại. */

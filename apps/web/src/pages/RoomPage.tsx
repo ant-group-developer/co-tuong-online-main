@@ -266,7 +266,6 @@ function WaitingRoom({
         <h2 className="h3">{t('room.invite')}</h2>
         {meta.visibility === 'public' ? (
           <>
-            <p className="muted small">{t('room.publicNote')}</p>
             <div className="invite-box">
               <div className="invite-field">
                 <span className="muted small">{t('room.roomLink')}</span>
@@ -290,9 +289,7 @@ function WaitingRoom({
           </>
         ) : isOwner ? (
           <>
-            <p className="muted small">
-              {t('room.privateNote')}
-            </p>
+            <p className="muted small">{t('room.privateNote')}</p>
             <div className="row">
               <button
                 type="button"

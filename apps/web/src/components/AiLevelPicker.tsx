@@ -1,7 +1,7 @@
 import type { AiLevel } from '@xq/engine/ai';
 import type { Side } from '@xq/engine';
 import { useTranslation } from 'react-i18next';
-import { LEVEL_INFO, thinkText, type Record3, type Records } from '../ai/levels';
+import { LEVEL_INFO, type Record3, type Records } from '../ai/levels';
 
 export type ColorChoice = Side | 'random';
 
@@ -18,12 +18,13 @@ export function Stars({ n, max = 6 }: { n: number; max?: number }) {
   );
 }
 
+/** Thành tích gọn (T · H · B); rỗng nếu chưa đấu mức này. */
 export function useRecordText(): (r?: Record3) => string {
   const { t } = useTranslation();
-  return (r) => (!r || r.w + r.d + r.l === 0 ? t('levels.recordNone') : t('levels.record', { w: r.w, d: r.d, l: r.l }));
+  return (r) => (!r || r.w + r.d + r.l === 0 ? '' : t('levels.record', { w: r.w, d: r.d, l: r.l }));
 }
 
-/** Lưới 6 thẻ chọn mức máy (radio). Mỗi thẻ: tên, độ mạnh, "Dành cho", "Máy chơi thế nào", thời gian nghĩ, thành tích. */
+/** Lưới 6 thẻ chọn mức máy (radio). Mỗi thẻ: số mức, tên, độ mạnh, nhãn ngắn, thành tích (nếu có). */
 export function AiLevelPicker({
   value,
   onChange,
@@ -44,26 +45,18 @@ export function AiLevelPicker({
     <div className="level-grid" role="radiogroup" aria-label={t('ai.pickerLabel')}>
       {LEVEL_INFO.map((l) => {
         const hint = t(`levels.${l.level}.hint`);
+        const badge = current === l.level ? <span className="badge ok level-badge">{t('levels.current')}</span> : hint ? <span className="badge level-badge">{hint}</span> : null;
+        const rec = recordText(records[l.level]);
         return (
           <label key={l.level} className={`level-card${value === l.level ? ' checked' : ''}`} data-level={l.level}>
             <input type="radio" name={name} value={l.level} checked={value === l.level} onChange={() => onChange(l.level)} />
-            <span className="level-card-head">
-              <strong>{t(`levels.${l.level}.name`)}</strong>
-              {current === l.level ? <span className="badge ok">{t('levels.current')}</span> : hint ? <span className="badge">{hint}</span> : null}
+            <span className="level-num" aria-hidden="true">
+              {l.stars}
             </span>
+            <strong className="level-name">{t(`levels.${l.level}.name`)}</strong>
             <Stars n={l.stars} />
-            <span className="level-desc">
-              <span className="level-label">{t('levels.forLabel')}</span>
-              <span>{t(`levels.${l.level}.for`)}</span>
-            </span>
-            <span className="level-desc">
-              <span className="level-label">{t('levels.playLabel')}</span>
-              <span>{t(`levels.${l.level}.play`)}</span>
-            </span>
-            <span className="level-meta">
-              <span>{thinkText(l.level)}</span>
-              <span>{recordText(records[l.level])}</span>
-            </span>
+            {badge}
+            {rec && <span className="level-rec">{rec}</span>}
           </label>
         );
       })}

@@ -1,31 +1,25 @@
 /**
  * Dữ liệu hiển thị của 6 mức máy + thành tích của người chơi với từng mức (lưu trên trình duyệt).
- * Chữ (tên, "Dành cho", "Máy chơi thế nào") nằm trong i18n: levels.<mức>.{name,for,play,hint}.
- * Số liệu lấy thẳng từ cấu hình engine (packages/engine/src/ai/profiles.ts) để mô tả luôn khớp với máy thật.
+ * Chữ (tên, nhãn ngắn) nằm trong i18n: levels.<mức>.{name,hint}.
  */
-import { AI_LEVELS, AI_PROFILES, type AiLevel } from '@xq/engine/ai';
-import i18n, { fmtNumber } from '../i18n';
+import { AI_LEVELS, type AiLevel } from '@xq/engine/ai';
+import i18n from '../i18n';
 
 export interface LevelInfo {
   level: AiLevel;
   /** Độ mạnh 1–6 */
   stars: number;
-  /** Thời gian nghĩ tối đa mỗi nước (giây, trên máy tính bàn) */
-  seconds: number;
 }
 
 export const LEVEL_INFO: LevelInfo[] = AI_LEVELS.map((level, i) => ({
   level,
   stars: i + 1,
-  seconds: AI_PROFILES[level].features.timeMs / 1000,
 }));
 
 export const infoOf = (level: AiLevel): LevelInfo => LEVEL_INFO.find((l) => l.level === level)!;
 
 /** Tên mức theo ngôn ngữ hiện tại. */
 export const levelName = (level: AiLevel): string => i18n.t(`levels.${level}.name`);
-
-export const thinkText = (level: AiLevel): string => i18n.t('levels.think', { seconds: fmtNumber(infoOf(level).seconds, 2) });
 
 export function nextLevel(level: AiLevel, dir: 1 | -1): AiLevel | null {
   const i = AI_LEVELS.indexOf(level) + dir;

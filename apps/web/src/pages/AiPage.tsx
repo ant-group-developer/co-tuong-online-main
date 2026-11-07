@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { AiClient } from '../ai/client';
-import { infoOf, isAiLevel, levelName, loadRecords, newGameId, nextLevel, recordResult, thinkText, type Records } from '../ai/levels';
+import { infoOf, isAiLevel, levelName, loadRecords, newGameId, nextLevel, recordResult, type Records } from '../ai/levels';
 import { AiLevelPicker, ColorPicker, Stars, useRecordText, type ColorChoice } from '../components/AiLevelPicker';
 import { BoardView, ViewToggle } from '../components/BoardView';
 import { Modal, SoundControl } from '../components/common';
 import { MoveList, PlayerBar, ResultBanner } from '../components/GamePanels';
-import { fmtNumber, moveText } from '../i18n';
+import { moveText } from '../i18n';
 import { useAuth } from '../lib/auth';
 import { AI_AVATAR, useViewMode, type EmoteId, type Mood, type SeatVisual } from '../lib/avatars';
 import { playSound } from '../lib/sound';
@@ -52,7 +52,6 @@ export function AiPage() {
   const [flipped, setFlipped] = useState(false);
   const [ver, setVer] = useState(0);
   const [thinking, setThinking] = useState(false);
-  const [aiInfo, setAiInfo] = useState<string>('');
   const [resigned, setResigned] = useState<{ result: GameResult; reason: EndReason } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [gameId, setGameId] = useState(newGameId);
@@ -114,7 +113,6 @@ export function AiPage() {
     setHuman(side);
     setFlipped(side === 'black');
     setResigned(null);
-    setAiInfo('');
     setError(null);
     setThinking(false);
     setGameId(newGameId());
@@ -133,7 +131,6 @@ export function AiPage() {
     setThinking(false);
     setLevel(lv);
     setSwitched(true);
-    setAiInfo('');
     bump(); // đổi positionVersion: kết quả tìm kiếm của máy cũ (nếu còn) bị bỏ
   };
 
@@ -181,7 +178,6 @@ export function AiPage() {
           setError(t('ai.badAiMove'));
           return;
         }
-        setAiInfo(t('ai.searchInfo', { depth: r.depth, nodes: fmtNumber(r.nodes), ms: r.timeMs }));
         soundFor(cur);
         bump();
       })
@@ -364,10 +360,7 @@ export function AiPage() {
               <Stars n={info.stars} />
             </div>
           </div>
-          <p className="muted small">{t(`levels.${level}.play`)}</p>
-          <p className="muted small">
-            {thinkText(level)} · {recordText(records[level])}
-          </p>
+          {recordText(records[level]) && <p className="muted small">{recordText(records[level])}</p>}
           {switched && <p className="muted small">{t('ai.switchedNote')}</p>}
           <div className="row">
             <button type="button" className="btn" onClick={() => setPicker(true)} data-testid="change-ai">
@@ -383,7 +376,6 @@ export function AiPage() {
             </span>
           </div>
           {status.inCheck && !over && <p className="check-alert">{t('ai.check')}</p>}
-          {aiInfo && <p className="muted small">{aiInfo}</p>}
           {error && <p className="error">{error}</p>}
           {result && (
             <ResultBanner text={resultText} sub={t(`endReason.${result.reason}`)}>

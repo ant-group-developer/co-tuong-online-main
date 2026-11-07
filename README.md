@@ -62,7 +62,7 @@ Nút **Kiểu bàn cờ: Bàn 2D / Bàn 3D** ở cột bên phải (chơi với 
 
 ## Đa ngôn ngữ
 
-Giao diện có **Tiếng Việt** và **English** (nút VI/EN trên thanh menu; lần đầu tự chọn theo ngôn ngữ trình duyệt, lựa chọn được lưu).
+Giao diện có **Tiếng Việt** và **English** (nút VI/EN trên thanh menu; mặc định Tiếng Việt, không phụ thuộc ngôn ngữ trình duyệt; `?lang=vi|en` trên URL được ưu tiên, lựa chọn được lưu).
 - Bản dịch: `apps/web/src/i18n/vi.ts` (bản gốc) và `en.ts` – TypeScript báo lỗi nếu thiếu khóa. Thêm ngôn ngữ: tạo `xx.ts` cùng kiểu `Messages`, khai báo trong `i18n/index.ts`.
 - Lỗi từ server gửi kèm **mã** (`functions/src/messages.ts`), web tự dịch theo ngôn ngữ đang chọn.
 - Ký hiệu nước đi: tiếng Việt `P2-5, M8.7`; tiếng Anh dùng ký hiệu quốc tế WXF `C2=5, H8+7`.
