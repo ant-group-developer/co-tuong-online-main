@@ -99,7 +99,7 @@ export function RankedPage() {
     <div className="page narrow stack">
       <h1>{t('ranked.title')}</h1>
       <p className="muted">
-        <Trans i18nKey="ranked.intro" values={{ code: auth.code }} components={{ code: <code />, link: <Link to="/online" /> }} />
+        <Trans i18nKey="ranked.intro" components={{ link: <Link to="/online" /> }} />
       </p>
       {inFriendly && myRoom && (
         <div className="banner" data-testid="ranked-blocked">

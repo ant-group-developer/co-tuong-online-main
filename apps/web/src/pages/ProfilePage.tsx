@@ -216,9 +216,7 @@ function ProfileView({ uid, isMe }: { uid: string; isMe: boolean }) {
         </div>
       </section>
       {isMe && guest && (
-        <p className="muted small">
-          {t('profile.guestNote')}
-        </p>
+        <p className="muted small">{t('profile.guestNote')}</p>
       )}
       {isMe && <AvatarPicker onSaved={setToast} />}
       <div className="stat-grid">

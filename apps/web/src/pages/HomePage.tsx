@@ -1,6 +1,6 @@
 import { START_FEN, positionFromFen } from '@xq/engine';
 import { useMemo } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Board } from '../components/Board';
 import { useAppName } from '../components/Layout';
@@ -15,7 +15,6 @@ export function HomePage() {
         <div className="hero-text">
           <img src="/logo.png" alt="" width={72} height={72} className="hero-logo" />
           <h1>{appName}</h1>
-          <p>{t('home.tagline')}</p>
           <div className="hero-actions">
             <Link to="/ai" className="btn primary big" data-testid="home-ai">
               {t('home.playAi')}
@@ -27,20 +26,6 @@ export function HomePage() {
               {t('home.playFriends')}
             </Link>
           </div>
-          <ul className="feature-list">
-            <li>
-              <strong>{t('home.f1Title')}</strong> – {t('home.f1')}
-            </li>
-            <li>
-              <strong>{t('home.f2Title')}</strong> – {t('home.f2')}
-            </li>
-            <li>
-              <strong>{t('home.f3Title')}</strong> – {t('home.f3')}
-            </li>
-            <li>
-              <Trans i18nKey="home.f4" components={{ lb: <Link to="/leaderboard" />, pf: <Link to="/profile" /> }} />
-            </li>
-          </ul>
         </div>
         <div className="hero-board" aria-hidden="true">
           <Board board={board} disabled ariaLabel={t('board.demo')} />

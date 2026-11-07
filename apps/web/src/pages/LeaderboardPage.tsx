@@ -92,9 +92,7 @@ export function LeaderboardPage() {
   return (
     <div className="page">
       <h1>{t('leaderboard.title')}</h1>
-      <p className="muted small">
-        <Trans i18nKey="leaderboard.note" values={{ n: PLACEMENT }} components={{ b: <strong /> }} />
-      </p>
+      <p className="muted small">{t('leaderboard.note', { n: PLACEMENT })}</p>
       {me && (
         <div className="card highlight" data-testid="my-rank">
           {me.rank !== null ? (
